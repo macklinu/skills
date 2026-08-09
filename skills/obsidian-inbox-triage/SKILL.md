@@ -1,11 +1,10 @@
 ---
 name: obsidian-inbox-triage
 description: Manually triage Markdown notes from a configured Obsidian Inbox. Use to classify, enrich, rename, and move Inbox notes, or route them to configured collections.
+disable-model-invocation: true
 ---
 
 # Obsidian Inbox triage
-
-Operate only when explicitly invoked. Do not watch the Inbox or run on a schedule.
 
 ## Configuration
 
@@ -120,8 +119,8 @@ Replace the complete `tags` list with one or two content tags. Remove `inbox`; d
 5. Obtain explicit user approval before committing any change. A request to triage, analyze, or dry-run is not approval.
 6. Immediately before each approved commit, re-read the source and relevant destinations. Confirm that the source still matches the analyzed content, any log still has the expected date section, and the destination filename is still available.
 7. If a re-read differs from the staged plan, do not change that note. Reanalyze it, present the revised plan or an uncertainty question, and obtain new explicit approval.
-8. During an approved commit, set an existing `updated` field to the current local ISO 8601 timestamp with numeric UTC offset. Move normal and dated-file notes only after the pre-commit re-read succeeds. Remove a log source only after its quote appears exactly once in the log.
+8. During an approved commit, set an existing `updated` field to the current local ISO 8601 timestamp with numeric UTC offset. Move normal and dated-file notes out of Inbox only after the pre-commit re-read succeeds. Verify that the destination exists once and the source no longer exists in Inbox. Remove a log source only after its quote appears exactly once in the log.
 
 ## Verification
 
-After an approved commit, list Inbox and affected collection paths. Confirm that every moved note exists once at its planned destination, every consolidated quote appears once beneath its planned `## YYYY-MM-DD` heading, each quote source was removed only after a successful append, skipped and open-question notes remain unchanged in Inbox, and no destination collision occurred.
+After an approved commit, list Inbox and affected collection paths. Confirm that every moved note exists once at its planned destination and no moved source remains in Inbox; every consolidated quote appears once beneath its planned `## YYYY-MM-DD` heading and its source was removed only after a successful append; skipped and open-question notes remain unchanged in Inbox; and no destination collision occurred.
