@@ -8,7 +8,7 @@ The skill does not disable model invocation. Its description tells compatible sk
 
 Automatic selection is useful, but it is not a complete guarantee. Add this instruction to the global agent prompt or task-completion workflow:
 
-> Before you finish a user request, decide if you resolved an unexpected minor obstacle that caused delay, failure, ambiguity, or avoidable rework. If it has reuse value and you can state a concrete resolution or safe workaround, invoke the `papercuts` skill and record one note. Do not record routine work, unresolved issues, secrets, private user content, prompts, tokens, cookies, or full tool transcripts.
+> Before you finish a user request, decide if you resolved an unexpected minor obstacle that caused delay, failure, ambiguity, or avoidable rework. If it has reuse value and you can state a concrete resolution or safe workaround, invoke the `papercuts` skill and record one note. Do not record routine work, unresolved issues, secrets, private user content, user prompt text, tokens, cookies, or complete tool transcripts.
 
 This instruction gives agents a reliable completion checkpoint. The skill supplies the qualification rules, configuration, metadata schema, safe write process, and verification requirements.
 

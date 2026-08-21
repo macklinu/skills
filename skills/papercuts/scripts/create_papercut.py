@@ -33,6 +33,8 @@ INPUT_KEYS = {
 }
 
 REQUIRED_INPUT_KEYS = INPUT_KEYS - {"repository_root", "git_branch", "git_commit"}
+REQUIRED_AGENT_KEYS = {"runtime"}
+SCHEMA_VERSION = 1
 AGENT_KEYS = {"runtime", "provider", "model", "session_id", "task_id"}
 RUNTIMES = {
     "omp",
@@ -47,6 +49,7 @@ RUNTIMES = {
 STATUSES = {"resolved", "workaround"}
 TAG = re.compile(r"^[a-z0-9]+(?:[/-][a-z0-9]+)*$")
 GIT_COMMIT = re.compile(r"^[0-9a-f]{40}(?:[0-9a-f]{24})?$")
+BODY_HEADING = re.compile(r"(?m)^##(?:[ \t]|$)")
 
 
 def fail(*errors: str) -> None:
@@ -78,9 +81,12 @@ def require_absolute_path(value: Any, name: str, errors: list[str]) -> str | Non
 
 
 
-def require_string_list(value: Any, name: str, errors: list[str]) -> list[str] | None:
-    if not isinstance(value, list) or not value:
-        errors.append(f"{name} must be a non-empty list of strings")
+def require_string_list(
+    value: Any, name: str, errors: list[str], *, allow_empty: bool = False
+) -> list[str] | None:
+    if not isinstance(value, list) or (not value and not allow_empty):
+        requirement = "a list of strings" if allow_empty else "a non-empty list of strings"
+        errors.append(f"{name} must be {requirement}")
         return None
     items: list[str] = []
     for index, item in enumerate(value):
@@ -88,6 +94,13 @@ def require_string_list(value: Any, name: str, errors: list[str]) -> list[str] |
         if item_value is not None:
             items.append(item_value)
     return items
+
+
+def require_body_text(value: Any, name: str, errors: list[str]) -> str | None:
+    text = require_string(value, name, errors)
+    if text is not None and BODY_HEADING.search(text):
+        errors.append(f"{name} must not contain an H2 heading")
+    return text
 
 
 def validate_input(data: Any) -> tuple[dict[str, Any], list[str]]:
@@ -126,7 +139,7 @@ def validate_input(data: Any) -> tuple[dict[str, Any], list[str]]:
         normalized_agent: dict[str, str | None] = {}
     else:
         unknown_agent = set(agent) - AGENT_KEYS
-        missing_agent = AGENT_KEYS - set(agent)
+        missing_agent = REQUIRED_AGENT_KEYS - set(agent)
         if unknown_agent:
             errors.append(f"unknown agent keys: {', '.join(sorted(unknown_agent))}")
         if missing_agent:
@@ -144,10 +157,10 @@ def validate_input(data: Any) -> tuple[dict[str, Any], list[str]]:
         for index, tag in enumerate(tags):
             if not TAG.fullmatch(tag):
                 errors.append(f"tags[{index}] must be lowercase and slash-safe")
-    sources = require_string_list(data.get("sources"), "sources", errors)
-    papercut = require_string(data.get("papercut"), "papercut", errors)
-    resolution = require_string(data.get("resolution"), "resolution", errors)
-    prevention = require_string(data.get("prevention"), "prevention", errors)
+    sources = require_string_list(data.get("sources"), "sources", errors, allow_empty=True)
+    papercut = require_body_text(data.get("papercut"), "papercut", errors)
+    resolution = require_body_text(data.get("resolution"), "resolution", errors)
+    prevention = require_body_text(data.get("prevention"), "prevention", errors)
 
     normalized = {
         "title": title,
@@ -179,6 +192,7 @@ def render_note(note: dict[str, Any], note_id: str, created: str) -> str:
     agent = note["agent"]
     frontmatter = [
         "---",
+        f"schema_version: {SCHEMA_VERSION}",
         f"id: {yaml_value(note_id)}",
         f"title: {yaml_value(note['title'])}",
         f"created: {yaml_value(created)}",
@@ -194,8 +208,11 @@ def render_note(note: dict[str, Any], note_id: str, created: str) -> str:
     frontmatter.extend(yaml_list(note["tooling"]))
     frontmatter.append("tags:")
     frontmatter.extend(yaml_list(note["tags"]))
-    frontmatter.append("sources:")
-    frontmatter.extend(yaml_list(note["sources"]))
+    if note["sources"]:
+        frontmatter.append("sources:")
+        frontmatter.extend(yaml_list(note["sources"]))
+    else:
+        frontmatter.append("sources: []")
     frontmatter.extend(
         [
             "---",
