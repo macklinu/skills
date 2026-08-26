@@ -40,6 +40,7 @@ If a task spans several branches, read all matching files before editing.
 - Use `Effect.fnUntraced` only for internal helpers where stack-frame/span metadata is intentionally unnecessary.
 - Prefer `Context.Service` for application services when the codebase has not standardized on another current service-tag style.
 - Build real service implementations with `Layer.effect(Service, Effect.gen(...))` and return `Service.of({ ... })`.
+- Infer TypeScript types from their canonical schemas or constructors whenever the API exposes the type instead of restating the shape by hand.
 - Model records with `Schema.Struct(...)` plus a same-name `interface`.
 - Model typed Effect errors with `Schema.TaggedErrorClass`.
 - Read runtime config through `Config`, not direct `process.env` access in application logic.
@@ -54,8 +55,8 @@ If a task spans several branches, read all matching files before editing.
 - Ordinary object record: `Schema.Struct(...)` plus same-name `interface`.
 - Scalar ID/value object: constrained branded schema.
 - Internal workflow decision or state: `Data.TaggedEnum<...>` plus `Data.taggedEnum<...>()` constructors and exhaustive `$match`.
-- Reusable boundary-crossing tagged variant: `Schema.TaggedStruct(...)` plus same-name `interface`.
-- Boundary-crossing tagged union: `Schema.TaggedUnion(...)` with `.cases`, `.guards`, and `.match`.
+- Reusable boundary-crossing tagged variant: `Schema.TaggedStruct(...)` plus `type Foo = typeof Foo.Type`.
+- Boundary-crossing tagged union: `Schema.TaggedUnion(...)` plus `type Foo = typeof Foo.Type`, with `.cases`, `.guards`, and `.match`.
 - External/custom discriminator such as `type`: `Schema.Struct({ type: Schema.tag("variant"), ... })` plus `Schema.toTaggedUnion("type")` when union helpers are needed.
 - Expected typed failure: `Schema.TaggedErrorClass`.
 - Unknown boundary payload: `Schema.decodeUnknownEffect(...)`.

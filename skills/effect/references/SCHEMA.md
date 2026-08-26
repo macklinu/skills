@@ -102,6 +102,7 @@ Guidance:
 - Use `Data.TaggedEnum` for internal control-flow algebras; it provides constructors, `$is`, and exhaustive `$match`. Do not add a Schema solely to obtain these utilities.
 - Use `Schema.TaggedStruct` for the ordinary Effect-owned `_tag` variant.
 - Use `Schema.TaggedUnion` when the union needs decoding, encoding, persistence, wire validation, JSON Schema derivation, or schema composition.
+- For `Schema.TaggedStruct` and `Schema.TaggedUnion`, derive the TypeScript type from the schema with `type Foo = typeof Foo.Type`. Do not hand-write `_tag` or duplicate schema fields in an interface.
 - Prefer a principled split over forcing one representation everywhere: Data internally, Schema at boundaries.
 - Use `Schema.tag(...)` when an external contract has a custom discriminator field such as `type` or `kind`; combine those structs with `Schema.toTaggedUnion("type")` when union helpers are needed.
 - If the encoded contract omits the discriminant, use `Schema.tagDefaultOmit(...)` deliberately.
