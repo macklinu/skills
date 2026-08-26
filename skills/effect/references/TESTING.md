@@ -4,8 +4,11 @@ Use this when writing Effect tests, tests involving time, retry, schedules, conc
 
 ## Defaults
 
-- Use `it.effect` by default.
-- Use `it.live` only when real time or live runtime services are the behavior under test.
+- Import `assert`, `it`, and `layer` from `@effect/vitest` when using its Effect-native helpers; prefer `assert` over Vitest `expect` in those tests.
+- Use `it.effect` by default. It provides Effect test services and a fresh `Scope`, then closes the scope after the test.
+- Use `it.live` only when real time or live runtime services are the behavior under test. It also provides and closes a fresh `Scope`.
+- Do not wrap `it.effect` or `it.live` bodies in `Effect.scoped`; the test runner already owns the scope.
+- Do not return an Effect from a plain Vitest `it` callback; use `it.effect` / `it.live` so the Effect is actually run.
 - Use test layers and `ConfigProvider` rather than global mutation.
 - Use `TestClock.setTime` / `TestClock.adjust` for sleeps, schedules, retries, leases, and timeouts.
 - Fork sleeping effects before advancing `TestClock`.
@@ -17,7 +20,7 @@ it.effect("finds a user", () =>
   Effect.gen(function* () {
     const users = yield* UserRepo.Service
     const result = yield* users.find(UserId.make("u1"))
-    expect(Option.isSome(result)).toBe(true)
+    assert.isTrue(Option.isSome(result))
   }).pipe(Effect.provide(UserRepo.testLayer)),
 )
 ```
@@ -48,10 +51,17 @@ it.effect("publishes exactly once", () =>
     yield* Deferred.await(ready)
     const message = yield* Queue.take(published)
 
-    expect(message).toEqual(expectedMessage)
+    assert.deepStrictEqual(message, expectedMessage)
   }),
 )
 ```
+
+## Property Tests And Shared Layers
+
+- Use `it.effect.prop` with Schema constraints or explicit fast-check arbitraries for invariants. Keep generators small enough that failures shrink to useful cases.
+- Use `layer(TestLayer)("suite", (it) => { ... })` when acquisition is intentionally shared across a test block. The layer is built before the block and released after it.
+- Shared layers also share state. Prefer per-test `Effect.provide(TestLayer)` when isolation matters, and do not rely on test order.
+- Test both schema-generated valid values and explicit malformed boundary values; property tests complement targeted examples rather than replacing them.
 
 ## First-Class App Test Stubs
 
