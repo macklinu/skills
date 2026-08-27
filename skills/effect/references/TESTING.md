@@ -4,7 +4,8 @@ Use this when writing Effect tests, tests involving time, retry, schedules, conc
 
 ## Defaults
 
-- Import `assert`, `it`, and `layer` from `@effect/vitest` when using its Effect-native helpers; prefer `assert` over Vitest `expect` in those tests.
+- When asserting Effect-native values or outcomes, first reach for the focused helpers from `@effect/vitest/utils`, such as `assertSuccess` / `assertFailure` for `Result` and `assertSome` / `assertNone` for `Option`.
+- Keep Vitest `expect()` for ordinary non-Effect assertions and matchers; do not replace it categorically with generic `assert` calls.
 - Use `it.effect` by default. It provides Effect test services and a fresh `Scope`, then closes the scope after the test.
 - Use `it.live` only when real time or live runtime services are the behavior under test. It also provides and closes a fresh `Scope`.
 - Do not wrap `it.effect` or `it.live` bodies in `Effect.scoped`; the test runner already owns the scope.
@@ -20,7 +21,7 @@ it.effect("finds a user", () =>
   Effect.gen(function* () {
     const users = yield* UserRepo.Service
     const result = yield* users.find(UserId.make("u1"))
-    assert.isTrue(Option.isSome(result))
+    assertSome(result, expectedUser)
   }).pipe(Effect.provide(UserRepo.testLayer)),
 )
 ```
@@ -51,7 +52,7 @@ it.effect("publishes exactly once", () =>
     yield* Deferred.await(ready)
     const message = yield* Queue.take(published)
 
-    assert.deepStrictEqual(message, expectedMessage)
+    expect(message).toEqual(expectedMessage)
   }),
 )
 ```
