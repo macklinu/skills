@@ -1,6 +1,6 @@
 ---
 name: macklinu-code-style
-description: Apply my code style to keep designs simple, APIs focused, state lifetimes explicit, tests useful, and changes easy to review. Use when implementing, refactoring, testing, documenting, or reviewing code and dependencies.
+description: Apply my default code style for implementation and review through simple designs, focused APIs, explicit state models, contract-based non-tautological tests, idiomatic library use, focused documentation, and reviewable changes. Use whenever writing, changing, refactoring, testing, documenting, or reviewing code or dependencies, even when the user does not mention code style.
 ---
 
 # macklinu Code Style
@@ -17,10 +17,28 @@ description: Apply my code style to keep designs simple, APIs focused, state lif
 - Use a named options object instead of positional arguments when a function takes more than one input.
 - Add data fields only when they carry useful information. Construct an error with no fields without passing a placeholder `{}` argument.
 - For user-visible state, define when it is created, updated, and cleared. Test the full validation sequence: show the error, edit the input, and recover to a valid state.
+- When a value can be in one of a fixed set of mutually exclusive states, model it with a discriminated union or state machine. Avoid multiple booleans when their combinations can represent impossible states; independent conditions can remain booleans.
+
+```ts
+// Avoid: several combinations are contradictory or meaningless.
+type RequestFlags = {
+  isLoading: boolean
+  isSuccess: boolean
+  isError: boolean
+}
+
+// Prefer: every value represents one valid state.
+type RequestState<T> =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "success"; value: T }
+  | { status: "error"; error: Error }
+```
 
 ## Tests
 
 - Test observable behavior and state or resource transitions that are likely to fail.
+- Do not write tautological tests that calculate expected results with the same logic as the implementation or merely confirm that a mock returns its configured value. Derive expectations independently from the observable contract, and choose cases that would fail for a plausible defect.
 - Keep tests deterministic and focused. Do not test source-code structure, confirm that removed fields stay absent, exercise deliberate no-op stubs, or depend on incidental implementation details.
 - Prefer the framework's test and lifecycle utilities to custom wrappers.
 - When operation order or resources matter, make ownership and cleanup explicit in both the implementation and its tests.
