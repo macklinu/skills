@@ -22,7 +22,7 @@ Build the smallest complete tooling baseline. Read the nearest repository instru
    nub init --yes --no-install
    ```
 
-   This creates a TypeScript-first Node root without installing dependencies. Keep the `packageManager` and `devEngines` values produced by the installed Nub version. The verified baseline produced `packageManager: "nub@0.7.5"`; do not hard-code that version into later projects.
+   This creates a TypeScript-first Node root without installing dependencies. Keep the `packageManager` and `devEngines` values produced by the installed Nub version. The verified new-project baseline with Nub v0.8.3 produced `packageManager: "nub@0.8.3"`; do not hard-code that version into later projects. A global Nub upgrade does not rewrite an existing repository pin: Nub intentionally provisions the version already pinned by that repository.
 3. During the pre-Nub bootstrap window, generate the standard Node ignore rules and install the two operating skills:
 
    ```sh
