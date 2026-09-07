@@ -65,11 +65,11 @@ Every Oxlint and Oxfmt runtime call must include `--disable-nested-config`. Let 
 ```json
 {
   "scripts": {
-    "typecheck": "nubx tsc --noEmit",
-    "lint": "nubx oxlint --disable-nested-config .",
-    "format": "nubx oxfmt --write --disable-nested-config",
-    "format:check": "nubx oxfmt --check --disable-nested-config",
-    "test": "nubx vitest run"
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint --disable-nested-config .",
+    "format": "oxfmt --write --disable-nested-config",
+    "format:check": "oxfmt --check --disable-nested-config",
+    "test": "vitest run"
   }
 }
 ```
