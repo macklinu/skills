@@ -52,7 +52,9 @@ type RequestState<T> =
 
 ## Documentation and dependencies
 
-- Keep quick-start documentation focused on the user's task. Put branch or merge details and implementation rationale in contributor or design documentation instead.
+- Treat code as the source of truth for the current implementation. Skip documentation updates when code already explains the change; do not repeat clear API names, control flow, or file structure in permanent docs.
+- Use docs for information code cannot express: enduring rationale and constraints, product vision, specifications of intended behavior, operations knowledge, and explanations for engineering or client stakeholders. Distinguish intended behavior from descriptions of the current implementation.
+- Keep quick-start documentation focused on the user's task. Put temporary branch or PR migration instructions and commit-specific handoffs in PR descriptions or working notes, not core product or architecture docs.
 - Preserve existing wording unless the change requires a user-visible documentation update.
 - Clearly distinguish versions that were tested from version ranges that are supported. Do not require consumers to use an exact version unless a verified compatibility constraint makes it necessary.
 - Explain exclusions and policy choices that could otherwise surprise reviewers or affect user decisions.
