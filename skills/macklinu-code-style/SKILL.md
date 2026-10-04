@@ -56,6 +56,8 @@ type RequestState<T> =
 - Preserve existing wording unless the change requires a user-visible documentation update.
 - Clearly distinguish versions that were tested from version ranges that are supported. Do not require consumers to use an exact version unless a verified compatibility constraint makes it necessary.
 - Explain exclusions and policy choices that could otherwise surprise reviewers or affect user decisions.
+- Keep user-facing status and delivery messages short. Report changed behavior, material assumptions, failures, and decisions that need attention.
+- Omit test counts and routine passing-CI claims. Include detailed verification only when requested or when it explains a risk.
 
 ## Reviewability
 
