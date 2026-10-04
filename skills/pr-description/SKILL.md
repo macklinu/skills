@@ -6,7 +6,9 @@ compatibility: Requires GitHub CLI (`gh`) to create or edit PRs and upload visua
 
 # PR description
 
-Write a PR body that tells reviewers what changed and why. Do not restate the issue or narrate the diff.
+Write a PR body that tells reviewers what changed and why. Do not restate the issue or narrate the diff. Keep the whole body concise; link long technical details instead of copying them.
+
+Distinguish implementation assumptions from stated requirements and unverified release prerequisites.
 
 ## Workflow
 
