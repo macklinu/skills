@@ -105,8 +105,8 @@ async function main() {
   }
   if (process.env.NODE_TLS_REJECT_UNAUTHORIZED === '0') fail('TLS certificate verification must be enabled.')
 
-  let installationId: unknown
-  let reference: unknown
+  let installationId: number
+  let reference: string
   try {
     if (!environment.HOME) throw new Error()
     const directory = join(environment.HOME, '.config', 'macklinu-machine')
@@ -114,25 +114,26 @@ async function main() {
     const directoryStat = lstatSync(directory)
     const fileStat = lstatSync(file)
     if (!directoryStat.isDirectory() || !fileStat.isFile() ||
-        (process.platform !== 'win32' && ((directoryStat.mode & 0o077) || (fileStat.mode & 0o077)))) {
+        (directoryStat.mode & 0o077) || (fileStat.mode & 0o077)) {
       throw new Error()
     }
     const config: unknown = JSON.parse(readFileSync(file, 'utf8'))
     if (!isObject(config) || !isObject(config.installation_ids)) throw new Error()
-    installationId = config.installation_ids[owner]
-    reference = config.private_key_reference
-    if (typeof installationId !== 'number' || !Number.isSafeInteger(installationId) || installationId <= 0 ||
-        typeof reference !== 'string' || !/^op:\/\/[^/\x00-\x1f\x7f]+\/[^/\x00-\x1f\x7f]+\/[^/\x00-\x1f\x7f]+$/.test(reference)) {
+    const id = config.installation_ids[owner]
+    const keyReference = config.private_key_reference
+    if (typeof id !== 'number' || !Number.isSafeInteger(id) || id <= 0 ||
+        typeof keyReference !== 'string' || !/^op:\/\/[^/\x00-\x1f\x7f]+\/[^/\x00-\x1f\x7f]+\/[^/\x00-\x1f\x7f]+$/.test(keyReference)) {
       throw new Error()
     }
+    installationId = id
+    reference = keyReference
   } catch {
     fail('Machine configuration is missing, invalid or insecure. Run /setup-macklinu-machine.')
   }
 
-  const keyResult = spawnSync('op', ['read', String(reference)], {
+  const keyResult = spawnSync('op', ['read', reference], {
     env: environment, stdio: ['ignore', 'pipe', 'pipe'],
   })
-  reference = undefined
   if (keyResult.error || keyResult.status !== 0 || !keyResult.stdout.length) {
     keyResult.stdout?.fill(0)
     fail('Cannot read the machine private key from 1Password.')
@@ -152,7 +153,7 @@ async function main() {
     keyResult.stdout.fill(0)
   }
 
-  let token: unknown
+  let token: string
   try {
     const response = await fetch(`https://api.github.com/app/installations/${installationId}/access_tokens`, {
       method: 'POST', redirect: 'error',
@@ -164,24 +165,22 @@ async function main() {
       // Keep the app's granted permissions, but never grant other repositories.
       body: JSON.stringify({ repositories: [name] }),
     })
-    jwt = ''
     if (!response.ok) throw new Error()
     const body: unknown = await response.json()
-    token = isObject(body) ? body.token : undefined
-    if (typeof token !== 'string' || !/^[^\s\x00-\x1f\x7f]+$/.test(token)) throw new Error()
+    const generatedToken = isObject(body) ? body.token : undefined
+    if (typeof generatedToken !== 'string' || !/^[^\s\x00-\x1f\x7f]+$/.test(generatedToken)) throw new Error()
+    token = generatedToken
   } catch {
     fail('Cannot generate a valid machine installation token.')
   }
 
-  const childEnvironment: Record<string, string | undefined> = { ...environment, GH_TOKEN: String(token), GH_REPO: repository }
-  token = undefined
+  const childEnvironment = { ...environment, GH_TOKEN: token, GH_REPO: repository }
   const result = operation === 'gh'
     ? spawnSync('gh', args, { env: childEnvironment, stdio: 'inherit' })
     : spawnSync('git', [...gitOptions, 'push', `https://github.com/${repository}.git`, ...args], {
         env: { ...childEnvironment, GIT_TERMINAL_PROMPT: '0', GIT_ASKPASS: '', SSH_ASKPASS: '', GIT_TRACE_REDACT: '1' },
         stdio: 'inherit',
       })
-  delete childEnvironment.GH_TOKEN
   process.exitCode = result.status ?? 1
 }
 

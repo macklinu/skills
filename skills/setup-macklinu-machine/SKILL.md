@@ -1,37 +1,27 @@
 ---
 name: setup-macklinu-machine
-description: Configure the local 1Password key reference and installation IDs for macklinu-machine, and add its instruction to the current Git repository. Use for first-time setup, a changed reference, or migration from the Fish workflow.
-compatibility: Requires Node.js 22+, pnpm 10.2+ (pnpx), and Git.
+description: Configure the local 1Password key reference and installation IDs for macklinu-machine, and add its instruction to the current Git repository. Use for first-time setup or a changed reference.
+compatibility: macOS only. Requires Node.js 22+, pnpm 10.2+ (pnpx), and Git.
 ---
 
 # Set up macklinu-machine
 
-Run from the target Git checkout. Setup does not read the key or use GitHub credentials. Publishing later also needs `op` and `gh`, but not Fish, jq, or `gh-token`.
+Stay in the target Git checkout. Setup stores a reference, not a key; it does not read 1Password or use GitHub credentials.
 
-## Ask one question
+Ask for the App key field's **Copy Secret Reference** from 1Password, never key contents or separate account/vault/item details. Reuse only validated local configuration. Do not infer a real reference from chat examples: syntax validation does not prove that the item exists. Never repeat the real reference or private metadata in responses, logs, repository files, or commits.
 
-> Where is the GitHub App private key stored in 1Password?
-
-Ask for an `op://<vault>/<item>/<field>` reference, never key contents or separate account/vault/item details. Do not repeat the real reference in responses, logs, repository files, or commits.
-
-## Run setup
-
-Resolve `scripts/setup.ts` to its absolute path from this installed skill. Run it through the pinned `pnpx`/`tsx` command below from the checkout. Supply the reference on stdin through the tool's input channel, not in arguments, an echoed command, or shell history. Disable shell tracing. The script takes no arguments and asks no questions.
-
-Example with generic input only:
+Resolve `scripts/setup.ts` to an absolute path from this checked-out or installed skill; global installation is not required. Supply the actual reference through the tool's captured stdin, not arguments, an echoed command, or shell history. Disable shell tracing. The script takes no arguments and asks no questions.
 
 ```sh
-pnpx --allow-build=esbuild tsx@4.23.15 /absolute/path/to/setup-macklinu-machine/scripts/setup.ts <<'REFERENCE'
-op://<vault>/<item>/<field>
-REFERENCE
+pnpx --allow-build=esbuild tsx@4.23.15 /absolute/path/to/setup-macklinu-machine/scripts/setup.ts
 ```
 
-`pnpx` can fetch and execute third-party packages. Use the tested version pin and a trusted package source. `--allow-build=esbuild` permits only tsx's build dependency in the isolated pnpx cache; it does not approve unrelated packages or change project/global build policy. The top-level version pin does not lock all dependencies. `tsx` executes TypeScript without type checking.
+Use this tested version pin and a trusted package source. `pnpx` can fetch and execute third-party code; the pin does not lock transitive dependencies. The esbuild allowance applies only to the isolated pnpx cache, not project/global build policy. `tsx` executes TypeScript without type checking.
 
-Setup writes `$HOME/.config/macklinu-machine/config.json` atomically with `private_key_reference` and an owner-to-ID `installation_ids` object. It adds the public defaults (`macklinu`: `169669532`, `fairfield-consulting`: `169669603`), preserves custom IDs and other fields, and sets directory/file modes to `0700`/`0600`. To change an installation, edit its positive integer ID in this local file. On Windows, also restrict access with local ACLs. Never copy the real file into a repository. Symlink configuration paths and a symlink root `AGENTS.md` are rejected.
+Setup atomically writes `$HOME/.config/macklinu-machine/config.json` with `private_key_reference` and the owner-to-ID `installation_ids` object. It fills missing public defaults for `macklinu` and `fairfield-consulting`, preserves custom IDs and other fields, and sets directory/file modes to `0700`/`0600`. To change an installation, edit its positive integer ID locally. Never copy the real configuration into a repository. Configuration symlinks and a symlink root `AGENTS.md` are rejected.
 
-Setup preserves root `AGENTS.md` and adds this line once:
+It preserves root `AGENTS.md` and adds this instruction once:
 
 > Before using the `gh` CLI, always read and follow the `/macklinu-machine` skill.
 
-Report success or the fixed error message, never configuration contents. If setup fails after saving configuration, the repository instruction might still need an update; rerun setup after fixing the cause.
+Report success or the fixed error, not configuration contents. If saving succeeds but the instruction update fails, fix the cause and rerun setup. For publication, follow `/macklinu-machine`; key access can require user approval for that CLI session, not a different working directory.

@@ -12,15 +12,6 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function inspect(path: string) {
-  try {
-    return lstatSync(path)
-  } catch (error) {
-    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return undefined
-    fail('Cannot inspect the local setup files.')
-  }
-}
-
 function main() {
   // Stdin keeps the private reference out of shell history and process arguments.
   if (process.argv.length !== 2) fail('Supply the 1Password field reference on stdin, not as an argument.')
@@ -38,9 +29,9 @@ function main() {
   const file = join(directory, 'config.json')
   const agentsFile = join(root.stdout.trim(), 'AGENTS.md')
   const instruction = 'Before using the `gh` CLI, always read and follow the `/macklinu-machine` skill.'
-  const directoryStat = inspect(directory)
-  const fileStat = inspect(file)
-  const agentsStat = inspect(agentsFile)
+  const directoryStat = lstatSync(directory, { throwIfNoEntry: false })
+  const fileStat = lstatSync(file, { throwIfNoEntry: false })
+  const agentsStat = lstatSync(agentsFile, { throwIfNoEntry: false })
   if (directoryStat && !directoryStat.isDirectory()) fail('The local configuration directory must be a real directory.')
   if (fileStat && !fileStat.isFile()) fail('The local configuration must be a regular file, not a symbolic link.')
   if (agentsStat && !agentsStat.isFile()) fail('The root AGENTS.md must be a regular file, not a symbolic link.')
@@ -55,13 +46,14 @@ function main() {
       fail('The local configuration must contain one valid JSON object.')
     }
   }
-  if (config.installation_ids !== undefined && !isObject(config.installation_ids)) {
+  const existingIds = config.installation_ids === undefined ? {} : config.installation_ids
+  if (!isObject(existingIds)) {
     fail('The installation_ids setting must be an object.')
   }
   const installationIds = {
     macklinu: 169669532,
     'fairfield-consulting': 169669603,
-    ...(isObject(config.installation_ids) ? config.installation_ids : {}),
+    ...existingIds,
   }
   for (const id of [installationIds.macklinu, installationIds['fairfield-consulting']]) {
     if (typeof id !== 'number' || !Number.isSafeInteger(id) || id <= 0) fail('Installation IDs must be positive integers.')
@@ -77,7 +69,6 @@ function main() {
     writeFileSync(temporaryFile, JSON.stringify({ ...config, private_key_reference: reference, installation_ids: installationIds }, null, 2) + '\n', {
       mode: 0o600, flag: 'wx',
     })
-    chmodSync(temporaryFile, 0o600)
     renameSync(temporaryFile, file)
   } finally {
     rmSync(temporary, { recursive: true, force: true })
