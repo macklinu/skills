@@ -2,14 +2,18 @@ import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { test } from 'node:test'
+import { join, resolve } from 'node:path'
+import { test, type TestContext } from 'node:test'
 
-const runScript = fileURLToPath(new URL('./run.ts', import.meta.url))
-const setupScript = fileURLToPath(new URL('../../setup-macklinu-machine/scripts/setup.ts', import.meta.url))
+const runScript = resolve('skills/macklinu-machine/scripts/run.ts')
+const setupScript = resolve('skills/setup-macklinu-machine/scripts/setup.ts')
 
-function fixture(t) {
+interface CommandFixture {
+  root: string
+  env: NodeJS.ProcessEnv
+}
+
+function fixture(t: TestContext) {
   const root = mkdtempSync(join(tmpdir(), 'machine-test-'))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   const home = join(root, 'home')
@@ -30,8 +34,14 @@ function fixture(t) {
   return { root, file, directory, config, opMarker, env }
 }
 
-function invoke({ fixture: f, script = runScript, args, input }) {
-  return spawnSync(process.execPath, [script, ...args], {
+function invoke({ fixture: f, script = runScript, args, input }: {
+  fixture: CommandFixture
+  script?: string
+  args: string[]
+  input?: string
+}) {
+  // Reuse the parent tsx loader without another package download per fixture command.
+  return spawnSync(process.execPath, [...process.execArgv, script, ...args], {
     cwd: f.root, env: f.env, input, encoding: 'utf8', timeout: 10_000,
   })
 }

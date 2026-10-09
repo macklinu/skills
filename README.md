@@ -6,4 +6,4 @@
 - [pr-description](skills/pr-description/) — Create concise GitHub pull request descriptions with template and visual-evidence support.
 - [todo-txt](skills/todo-txt/) — Read and safely edit line-based todo.txt files.
 - [setup-macklinu-machine](skills/setup-macklinu-machine/) — Configure local key references and installation IDs, and add the machine skill instruction to a repository.
-- [macklinu-machine](skills/macklinu-machine/) — Use a Node/TypeScript command for GitHub App PRs and HTTPS pushes, and the bot identity for commits.
+- [macklinu-machine](skills/macklinu-machine/) — Use a pinned pnpx/tsx TypeScript command for GitHub App PRs and HTTPS pushes, and the bot identity for commits.

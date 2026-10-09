@@ -1,7 +1,7 @@
 ---
 name: setup-macklinu-machine
 description: Configure the local 1Password key reference and installation IDs for macklinu-machine, and add its instruction to the current Git repository. Use for first-time setup, a changed reference, or migration from the Fish workflow.
-compatibility: Requires Node.js 22.18+ and Git.
+compatibility: Requires Node.js 22+, pnpm 10.2+ (pnpx), and Git.
 ---
 
 # Set up macklinu-machine
@@ -16,15 +16,17 @@ Ask for an `op://<vault>/<item>/<field>` reference, never key contents or separa
 
 ## Run setup
 
-Resolve `scripts/setup.ts` to its absolute path from this installed skill. Run it with Node from the checkout. Supply the reference on stdin through the tool's input channel, not in arguments, an echoed command, or shell history. Disable shell tracing. The script takes no arguments and asks no questions.
+Resolve `scripts/setup.ts` to its absolute path from this installed skill. Run it through the pinned `pnpx`/`tsx` command below from the checkout. Supply the reference on stdin through the tool's input channel, not in arguments, an echoed command, or shell history. Disable shell tracing. The script takes no arguments and asks no questions.
 
 Example with generic input only:
 
 ```sh
-node /absolute/path/to/setup-macklinu-machine/scripts/setup.ts <<'REFERENCE'
+pnpx --allow-build=esbuild tsx@4.23.15 /absolute/path/to/setup-macklinu-machine/scripts/setup.ts <<'REFERENCE'
 op://<vault>/<item>/<field>
 REFERENCE
 ```
+
+`pnpx` can fetch and execute third-party packages. Use the tested version pin and a trusted package source. `--allow-build=esbuild` permits only tsx's build dependency in the isolated pnpx cache; it does not approve unrelated packages or change project/global build policy. The top-level version pin does not lock all dependencies. `tsx` executes TypeScript without type checking.
 
 Setup writes `$HOME/.config/macklinu-machine/config.json` atomically with `private_key_reference` and an owner-to-ID `installation_ids` object. It adds the public defaults (`macklinu`: `169669532`, `fairfield-consulting`: `169669603`), preserves custom IDs and other fields, and sets directory/file modes to `0700`/`0600`. To change an installation, edit its positive integer ID in this local file. On Windows, also restrict access with local ACLs. Never copy the real file into a repository. Symlink configuration paths and a symlink root `AGENTS.md` are rejected.
 
