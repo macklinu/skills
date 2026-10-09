@@ -1,34 +1,35 @@
 ---
 name: setup-macklinu-machine
-description: Configure the local 1Password private-key reference for the macklinu-machine GitHub App and add its gh instruction to the current Git repository. Use for first-time setup or to change the stored private-key reference.
+description: Configure the local 1Password key reference and installation IDs for macklinu-machine, and add its instruction to the current Git repository. Use for first-time setup, a changed reference, or migration from the Fish workflow.
+compatibility: Requires Node.js 22.18+ and Git.
 ---
 
 # Set up macklinu-machine
 
-Use this skill from the target Git checkout. Setup needs Fish, jq, and Git. Later, `/macklinu-machine` also needs the 1Password CLI (`op`), GitHub CLI (`gh`), and `gh-token`.
+Run from the target Git checkout. Setup does not read the key or use GitHub credentials. Publishing later also needs `op` and `gh`, but not Fish, jq, or `gh-token`.
 
 ## Ask one question
 
-Ask exactly one question:
-
 > Where is the GitHub App private key stored in 1Password?
 
-Tell the user to supply an `op://<vault>/<item>/<field>` secret reference, never the private-key contents. Do not ask for the account, vault, item, or field separately. Do not repeat the supplied reference in responses, command output, repository files, or commits. Do not read the private key during setup.
+Ask for an `op://<vault>/<item>/<field>` reference, never key contents or separate account/vault/item details. Do not repeat the real reference in responses, logs, repository files, or commits.
 
 ## Run setup
 
-Resolve `scripts/setup.fish` relative to this installed skill and use its absolute path. Keep the caller's working directory in the target Git checkout. Pass the supplied reference as the only argument, with shell quoting that preserves spaces and does not evaluate its contents. Disable shell tracing and do not echo the command or reference.
+Resolve `scripts/setup.ts` to its absolute path from this installed skill. Run it with Node from the checkout. Supply the reference on stdin through the tool's input channel, not in arguments, an echoed command, or shell history. Disable shell tracing. The script takes no arguments and asks no questions.
 
-Usage example with a generic reference:
+Example with generic input only:
 
 ```sh
-fish --no-config "/absolute/path/to/setup-macklinu-machine/scripts/setup.fish" 'op://<vault>/<item>/<field>'
+node /absolute/path/to/setup-macklinu-machine/scripts/setup.ts <<'REFERENCE'
+op://<vault>/<item>/<field>
+REFERENCE
 ```
 
-The script runs without questions. It stores `private_key_reference` in `$HOME/.config/macklinu-machine/config.json`, preserves other existing object fields, and sets directory/file permissions to `0700`/`0600`. It does not require 1Password sign-in or GitHub authentication.
+Setup writes `$HOME/.config/macklinu-machine/config.json` atomically with `private_key_reference` and an owner-to-ID `installation_ids` object. It adds the public defaults (`macklinu`: `169669532`, `fairfield-consulting`: `169669603`), preserves custom IDs and other fields, and sets directory/file modes to `0700`/`0600`. To change an installation, edit its positive integer ID in this local file. On Windows, also restrict access with local ACLs. Never copy the real file into a repository. Symlink configuration paths and a symlink root `AGENTS.md` are rejected.
 
-It preserves the repository's root `AGENTS.md` and adds this instruction once:
+Setup preserves root `AGENTS.md` and adds this line once:
 
 > Before using the `gh` CLI, always read and follow the `/macklinu-machine` skill.
 
-If setup fails, report its fixed error message without the reference. On success, report that local configuration and the repository instruction are ready. Do not include the configuration contents.
+Report success or the fixed error message, never configuration contents. If setup fails after saving configuration, the repository instruction might still need an update; rerun setup after fixing the cause.

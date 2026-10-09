@@ -1,88 +1,75 @@
 ---
 name: macklinu-machine
-description: Use the macklinu-machine GitHub App identity for GitHub API and PR commands, Git commits, and HTTPS pushes in macklinu or fairfield-consulting repositories. Use when asked to publish as the machine, or when the repository AGENTS.md requires this identity. Do not use personal GitHub credentials for these operations.
-compatibility: Requires Fish and Git. GitHub commands and pushes also require jq, the 1Password CLI (op), GitHub CLI (gh), and the Link-/gh-token extension.
+description: Use the macklinu-machine GitHub App for GitHub PR and repository API commands, commits, and HTTPS pushes in macklinu or fairfield-consulting repositories. Use when asked to publish as the machine or when AGENTS.md requires it. Never fall back to personal credentials.
+compatibility: Requires Node.js 22.18+ and Git. PR/API commands and pushes also require the 1Password CLI (op) and GitHub CLI (gh).
 ---
 
 # macklinu-machine
 
-Publish with the GitHub App, not the user's personal GitHub account. Use the bundled `scripts/run.fish`; do not reproduce its authentication commands in an agent shell.
+Use the bundled `scripts/run.ts`. Do not copy its authentication commands into an agent shell. Resolve the script to an absolute path from the installed skill; it need not be in the target checkout.
 
-## Public identity
+## Identity and configuration
 
-| Setting | Value |
-| --- | --- |
-| App ID | `5252838` |
-| Installation for `macklinu` | `169669532` |
-| Installation for `fairfield-consulting` | `169669603` |
-| Git author and committer | `macklinu-machine[bot]` |
-| Git author and committer email | `340227694+macklinu-machine[bot]@users.noreply.github.com` |
-| GitHub host | `github.com` |
+The App ID (`5252838`), installation IDs, bot name (`macklinu-machine[bot]`), and email (`340227694+macklinu-machine[bot]@users.noreply.github.com`) are public identifiers, not credentials. An installation ID in source does not grant access. Local configuration keeps installation selection separate from code.
 
-These are public identifiers. The 1Password account, vault, item, field, IDs, and private-key reference are private. Never put them in repository files, issues, PRs, logs, examples, or command output.
+`$HOME/.config/macklinu-machine/config.json` contains:
 
-## Local configuration
-
-The only configuration file is `$HOME/.config/macklinu-machine/config.json`. Its `private_key_reference` value is a string that points to the private key in 1Password. The reference has this generic form: `op://<vault>/<item>/<field>`.
-
-The script reads the reference with `jq` and captures it. It does not print it. This Fish example shows the same capture pattern; it is not a separate publishing workflow:
-
-```fish
-set --global --unexport fish_trace ''
-set --local --unexport private_key_reference (jq --exit-status --raw-output \
-    '.private_key_reference | strings | select(test("^op://[^/[:cntrl:]]+/[^/[:cntrl:]]+/[^/[:cntrl:]]+$"))' \
-    "$HOME/.config/macklinu-machine/config.json" 2>/dev/null)
-set --local config_status $status
-# Check config_status before using the captured value. Never echo it.
-set --erase private_key_reference
+```json
+{
+  "private_key_reference": "op://<vault>/<item>/<field>",
+  "installation_ids": {
+    "macklinu": 169669532,
+    "fairfield-consulting": 169669603
+  }
+}
 ```
 
-If configuration is missing or invalid, use `/setup-macklinu-machine`. Do not ask for the key, copy it into the checkout, or fall back to personal authentication. The runtime does not write or change local configuration.
+This is a generic example, not a file to put in the checkout. The real 1Password account, vault, item, field, IDs, and reference are private metadata. Never include them, private keys, JWTs, or tokens in source, logs, issues, PRs, or command output.
+
+Use `/setup-macklinu-machine` if configuration is missing or invalid, including configuration from the old Fish workflow. Setup adds missing installation IDs and preserves custom IDs. Keep the directory/file at `0700`/`0600`, without symlinks. On Windows, restrict access with local ACLs; POSIX mode checks do not protect Windows files. The publishing command only reads configuration.
 
 ## Workflow
 
-1. Read the checkout's `AGENTS.md` and identify its `OWNER/REPO`. Only `macklinu` and `fairfield-consulting` owners are supported.
-2. Keep the working directory in that repository's Git checkout. Use the same target for Git commits, pushes, and GitHub API or PR commands.
-3. Resolve `scripts/run.fish` to its absolute path from this installed skill's location. Do not assume the skill is inside the target checkout. The absolute path in the examples below is a placeholder; replace it with the resolved path.
-4. Invoke the script with `fish --no-config`, the target, an operation, and its arguments. Do not omit the command or arguments.
-5. Stop if authentication fails. Do not run the publishing command again with personal credentials. Each separate authenticated invocation obtains a new token; there is no retry or cache.
+1. Read the target checkout's `AGENTS.md`. Identify `OWNER/REPO`; only `macklinu` and `fairfield-consulting` are supported.
+2. Keep the working directory in that checkout. Use the same target for commits, pushes, and PR/API commands.
+3. Run `node /absolute/path/to/macklinu-machine/scripts/run.ts OWNER/REPO OPERATION ARGS...`.
+4. Stop on authentication failure. Do not retry with personal credentials.
 
-Do not change `GH_TOKEN`, `GH_HOST`, or `GH_REPO` to bypass the script. Do not use conflicting repository or host flags, cross-repository URLs, API endpoints for another repository, `gh auth login`, or `gh auth setup-git`. The script rejects `-R`, `--repo`, and `--hostname` overrides. Keep the target repository in API endpoint paths. Do not pass a different push destination or flags that change it.
+Node's built-in TypeScript support needs no package install, Fish, jq, or `gh-token` extension. Use a trusted Node runtime, CLI binaries, checkout, hooks, editors, and pagers. Do not enable shell tracing, Node debugging, or diagnostic loaders around credential use.
 
-### GitHub PR and API commands
-
-```sh
-fish --no-config /absolute/path/to/macklinu-machine/scripts/run.fish macklinu/example-repo gh pr create --title 'Describe the change' --body 'Describe the result'
-fish --no-config /absolute/path/to/macklinu-machine/scripts/run.fish macklinu/example-repo gh pr edit 123 --body 'Updated description'
-fish --no-config /absolute/path/to/macklinu-machine/scripts/run.fish macklinu/example-repo gh pr view 123
-fish --no-config /absolute/path/to/macklinu-machine/scripts/run.fish fairfield-consulting/example-repo gh api repos/fairfield-consulting/example-repo/pulls
-```
-
-For each `gh` operation, the script selects the owner's explicit installation, reads the private key with `op read`, and checks that command's own exit status. It holds the key only in a non-exported Fish variable, then feeds it to `gh token generate --app-id 5252838 --installation-id ID` through `psub --fifo`. Token JSON is captured and the nonempty token is read with `jq`.
-
-Fish's default `psub` writes a regular file; this script explicitly uses a FIFO instead. The documented safe FIFO limit is 8 KiB, and the RSA-2048 PEM fits within it. Fish removes the FIFO after the generation command exits. The script erases the key variable after generation. It never saves a PEM or token to a regular file.
-
-The fresh token is scoped to the child command with `GH_TOKEN`, `GH_REPO`, and `GH_HOST=github.com`. Configuration, 1Password, token-generation, and token-parsing failures stop before the requested command runs. Error messages are generic; private references and authentication stderr are not printed. Inherited Fish tracing is disabled before private data is read.
-
-### Git commits
-
-Stage the intended files with normal Git commands, then commit through the script:
+### PR and repository API commands
 
 ```sh
-fish --no-config /absolute/path/to/macklinu-machine/scripts/run.fish macklinu/example-repo commit -m 'Describe the change'
+node /absolute/path/to/macklinu-machine/scripts/run.ts macklinu/example-repo gh pr create --title 'Describe the change' --body 'Describe the result'
+node /absolute/path/to/macklinu-machine/scripts/run.ts macklinu/example-repo gh pr edit 123 --body 'Updated description'
+node /absolute/path/to/macklinu-machine/scripts/run.ts fairfield-consulting/example-repo gh api repos/fairfield-consulting/example-repo/pulls
 ```
 
-The child `git commit` receives the bot's `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_NAME`, and `GIT_COMMITTER_EMAIL`. It needs no configuration, private key, 1Password access, or token. Do not override the author with a different `--author` value. When amending a commit, include `--reset-author` so Git does not retain the previous author.
+Only `gh pr` and repository REST API commands are allowed. Put the endpoint immediately after `api`; `repos/{owner}/{repo}/...` placeholders are supported. Do not use cross-repository URLs or endpoints, host/repository overrides, replacement authentication headers, or HTTP request logging. Auth commands, extensions, and other `gh` commands are blocked because they can expose the token or change authentication.
 
-### Git pushes
+Each invocation captures `op read`, signs an RS256 App JWT in memory, and requests a fresh installation token from `api.github.com`. The token request is limited to the named repository. It retains the App's granted permissions; keep those permissions and installed repositories at the minimum required in GitHub App settings. No redirect, retry, token cache, PEM file, or token file is used.
+
+Configuration, key-read, signing, and token failures stop before the requested command. Errors do not show private references or authentication stderr. The child receives `GH_TOKEN`, `GH_REPO`, and `GH_HOST=github.com`; inherited personal tokens and Git/gh tracing are removed. The PEM buffer is cleared after signing. JavaScript strings and crypto objects cannot be guaranteed to leave no memory copies.
+
+### Commits
+
+Stage only the intended files, then run:
 
 ```sh
-fish --no-config /absolute/path/to/macklinu-machine/scripts/run.fish macklinu/example-repo push HEAD
-fish --no-config /absolute/path/to/macklinu-machine/scripts/run.fish fairfield-consulting/example-repo push HEAD:refs/heads/example-branch --force-with-lease
+node /absolute/path/to/macklinu-machine/scripts/run.ts macklinu/example-repo commit -m 'Describe the change'
 ```
 
-The script obtains a fresh token and runs `git push` against the explicit `https://github.com/OWNER/REPO.git` URL. Refs and flags follow that destination. Per-command Git options first clear credential helpers, then use `!gh auth git-credential` with the child token. Personal credential helpers and interactive credential prompts cannot supply fallback credentials. Authorization extra headers are cleared for this command as well.
+The child receives the bot's author and committer name/email. No local machine configuration, key, or token is needed. Do not override `--author`. Include `--reset-author` when amending or reusing a commit message so Git does not retain the previous author. Check both author and committer after the commit.
 
-No token cache, daemon, saved PEM, Git credential store, global Git identity change, remote edit, or permanent credential-helper change is used. Do not configure URL rewrites that replace the explicit HTTPS destination with SSH or a different host. The script returns the downstream command's exit status.
+### HTTPS pushes
 
-Sources: [Fish FIFO behavior](https://fishshell.com/docs/current/cmds/psub.html), [gh-token interface](https://github.com/Link-/gh-token), and [Git credential helpers](https://git-scm.com/docs/gitcredentials).
+```sh
+node /absolute/path/to/macklinu-machine/scripts/run.ts macklinu/example-repo push HEAD
+node /absolute/path/to/macklinu-machine/scripts/run.ts fairfield-consulting/example-repo push HEAD:refs/heads/example-branch --force-with-lease
+```
+
+The destination is `https://github.com/OWNER/REPO.git`. Do not supply a different destination, transport, or submodule push. Configured submodule pushes are disabled. Remove Git URL rewrites before using this operation. The command clears generic and URL-specific credential helpers and extra headers, then uses `gh auth git-credential` with the child token. Interactive credential fallback is disabled. It does not change remotes, global identity, or permanent Git settings. The downstream exit status is returned.
+
+The child process and its trusted hooks/tools can access the token. Local process inspection or memory dumps can expose it. An installation token can remain valid for up to one hour after this process ends. Protect the 1Password key and local runtime; this workflow is not a sandbox.
+
+Sources: [Node TypeScript support](https://nodejs.org/api/typescript.html), [App JWTs](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-json-web-token-jwt-for-a-github-app), [installation tokens](https://docs.github.com/en/rest/apps/apps#create-an-installation-access-token-for-an-app), and [Git credential helpers](https://git-scm.com/docs/gitcredentials).
