@@ -1,0 +1,7 @@
+{
+  "ignorePatterns": [
+    "/skills/macklinu-machine/scripts/run.ts",
+    "/skills/macklinu-machine/scripts/run.test.ts",
+    "/skills/setup-macklinu-machine/scripts/setup.ts"
+  ]
+}

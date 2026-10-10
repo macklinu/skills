@@ -1,3 +1,7 @@
+/* oxlint-disable unicorn/no-abusive-eslint-disable */
+/* oxlint-disable */
+// Oxfmt excludes this file via the root .oxfmtrc.json ignorePatterns.
+
 import { spawnSync } from 'node:child_process'
 import { createPrivateKey } from 'node:crypto'
 import { chmodSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
