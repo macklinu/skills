@@ -1,6 +1,6 @@
 ---
 name: machine-pr-feedback
-description: Address one selected GitHub PR review as macklinu-machine, verify and publish focused fixes, and leave very short replies in the original threads. Invoke with exactly one review URL, not a PR URL or an inline-comment URL.
+description: Address one selected GitHub PR review as macklinu-machine, verify and publish focused fixes, leave very short replies in the original threads, and re-request macklinu after each completed pushed batch. Invoke with exactly one review URL, not a PR URL or an inline-comment URL.
 disable-model-invocation: true
 compatibility: Requires macklinu-machine and its macOS publication prerequisites, GitHub CLI, and a writable same-repository PR head in macklinu or fairfield-consulting.
 ---
@@ -49,7 +49,7 @@ gh api "repos/$REPO/issues/$PR/comments?per_page=100" --paginate --slurp
 
 ## 3. Address each item
 
-Create a temporary ledger with one row per actionable request, including separate requests in a review body or one inline comment. Record source URL/ID, thread root (inline only), requested result, evidence, outcome, and response status. Map duplicate requests to one fix but keep each source accounted for. Record non-actionable praise or acknowledgments as already addressed with no reply.
+Create a temporary ledger with one row per actionable request, including separate requests in a review body or one inline comment. Record source URL/ID, thread root (inline only), requested result, evidence, outcome, and response status. Map duplicate requests to one fix but keep each source accounted for. Record non-actionable praise or acknowledgments as already addressed with no reply. Track the published batch SHA and its separate reviewer status: requested, already pending, blocked, failed, or not needed.
 
 For each request:
 
@@ -79,7 +79,31 @@ gh api "repos/$REPO/issues/$PR/comments" --method POST --input reply.json
 gh api "repos/$REPO/issues/comments/$COMMENT" --method PATCH --input reply.json
 ```
 
-Check returned author, body, PR membership, and `in_reply_to_id` for inline replies; retain response URLs in the ledger. REST replies do not resolve threads. Do not auto-approve, dismiss reviews, merge, or claim resolution without an actual resolution action. Remove temporary payloads and the ledger after a short local handoff of outcomes and any blockers; do not post a redundant final PR summary.
+Check returned author, body, PR membership, and `in_reply_to_id` for inline replies; retain response URLs in the ledger. REST replies do not resolve threads. Do not auto-approve, dismiss reviews, merge, or claim resolution without an actual resolution action. Do not post a redundant final PR summary.
+
+## 5. Re-request macklinu after the batch
+
+After each new batch of scoped fixes is pushed, publication is verified, and all scoped replies are posted or verified equivalent, request `macklinu` exactly once for that batch. No request after failed/unverified publication or failed replies. Answer-only and already-addressed runs with no new push do not notify again. A retry of an unfinished reviewer step may use the retained published-batch evidence without another push or repeating successful replies.
+
+Re-read the PR's open/draft state, author, head SHA, and pending reviewer list:
+
+```sh
+gh api "repos/$REPO/pulls/$PR"
+gh api "repos/$REPO/pulls/$PR/requested_reviewers"
+```
+
+If the pending `users` list already contains `macklinu`, record already pending and skip the write; never remove/re-add them for a notification. A previous completed review does not satisfy the new request: submitting a review removes that user from the pending list.
+
+Otherwise, after checking state and author, serialize `{"reviewers":["macklinu"]}` into `reviewers.json` with a JSON writer. Use the username without `@`; this is not an assignee or a text mention:
+
+```sh
+gh api "repos/$REPO/pulls/$PR/requested_reviewers" --method POST --input reviewers.json
+gh api "repos/$REPO/pulls/$PR/requested_reviewers"
+```
+
+Verify `macklinu` in the actual pending state before claiming requested. If the PR author is `macklinu`, record blocked: GitHub cannot request the author's own review. Preserve all completed feedback outcomes. Do not change draft/ready state; if GitHub rejects the request on a draft or other unsupported state, report that exact constraint. Permission or request failures are separate visible batch statuses, not false feedback completion or a reason to change authentication.
+
+Keep unfinished batch evidence in the ledger or local handoff so a deliberate retry only completes the missing step. After a failed/uncertain request, inspect pending state before another attempt. Once a batch's request succeeded, do not re-request merely because that review later completed; a new pushed batch is needed. Include batch SHA, reviewer status, and exact blocker in the short handoff, then remove temporary payloads and any ledger whose remaining state is captured there.
 
 ## Reply contract
 
@@ -103,3 +127,6 @@ Every selected item must end as fixed, answered, blocked, or already addressed, 
 - [PR head identity](https://docs.github.com/en/rest/pulls/pulls#get-a-pull-request)
 - [Issue comments for review-body responses](https://docs.github.com/en/rest/issues/comments#create-an-issue-comment)
 - [GitHub CLI fields, input, and pagination](https://cli.github.com/manual/gh_api)
+- [Pending reviewers and REST review requests](https://docs.github.com/en/rest/pulls/review-requests)
+- [Re-requesting after changes](https://docs.github.com/en/pull-requests/how-tos/create-pull-requests/requesting-a-pull-request-review)
+- [Draft state and code-owner behavior](https://docs.github.com/en/pull-requests/reference/pull-requests#draft-pull-requests)
