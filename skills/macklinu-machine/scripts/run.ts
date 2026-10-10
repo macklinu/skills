@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process'
 import { createPrivateKey, sign } from 'node:crypto'
 import { lstatSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, isAbsolute, join } from 'node:path'
 
 class WorkflowError extends Error {}
 
@@ -106,7 +106,7 @@ async function main() {
   if (process.env.NODE_TLS_REJECT_UNAUTHORIZED === '0') fail('TLS certificate verification must be enabled.')
 
   let installationId: number
-  let reference: string
+  let keyPath: string
   try {
     if (!environment.HOME) throw new Error()
     const directory = join(environment.HOME, '.config', 'macklinu-machine')
@@ -118,29 +118,37 @@ async function main() {
       throw new Error()
     }
     const config: unknown = JSON.parse(readFileSync(file, 'utf8'))
-    if (!isObject(config) || !isObject(config.installation_ids)) throw new Error()
+    if (!isObject(config) || !isObject(config.installation_ids) ||
+        Object.values(config.installation_ids).some(id => typeof id !== 'number' || !Number.isSafeInteger(id) || id <= 0)) {
+      throw new Error()
+    }
     const id = config.installation_ids[owner]
-    const keyReference = config.private_key_reference
+    const path = config.private_key_path
     if (typeof id !== 'number' || !Number.isSafeInteger(id) || id <= 0 ||
-        typeof keyReference !== 'string' || !/^op:\/\/[^/\x00-\x1f\x7f]+\/[^/\x00-\x1f\x7f]+\/[^/\x00-\x1f\x7f]+$/.test(keyReference)) {
+        typeof path !== 'string' || !isAbsolute(path) || /[\x00-\x1f\x7f]/.test(path)) {
       throw new Error()
     }
     installationId = id
-    reference = keyReference
+    keyPath = path
   } catch {
     fail('Machine configuration is missing, invalid or insecure. Run /setup-macklinu-machine.')
   }
 
-  const keyResult = spawnSync('op', ['read', reference], {
-    env: environment, stdio: ['ignore', 'pipe', 'pipe'],
-  })
-  if (keyResult.error || keyResult.status !== 0 || !keyResult.stdout.length) {
-    keyResult.stdout?.fill(0)
-    fail('Cannot read the machine private key from 1Password.')
+  let pem: Buffer
+  try {
+    const directoryStat = lstatSync(dirname(keyPath))
+    const keyStat = lstatSync(keyPath)
+    if (!directoryStat.isDirectory() || (directoryStat.mode & 0o022) ||
+        !keyStat.isFile() || (keyStat.mode & 0o077) || !(keyStat.mode & 0o400)) {
+      throw new Error()
+    }
+    pem = readFileSync(keyPath)
+  } catch {
+    fail('Cannot read a private, regular App PEM file. Check the local key path and permissions.')
   }
   let jwt: string
   try {
-    const key = createPrivateKey(keyResult.stdout)
+    const key = createPrivateKey({ key: pem, format: 'pem' })
     if (key.asymmetricKeyType !== 'rsa') throw new Error()
     const now = Math.floor(Date.now() / 1000)
     const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url')
@@ -150,7 +158,7 @@ async function main() {
   } catch {
     fail('Cannot sign the GitHub App token.')
   } finally {
-    keyResult.stdout.fill(0)
+    pem.fill(0)
   }
 
   let token: string

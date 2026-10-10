@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process'
+import { createPrivateKey } from 'node:crypto'
 import { chmodSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, isAbsolute, join, resolve } from 'node:path'
 
 class SetupError extends Error {}
 
@@ -13,11 +14,9 @@ function isObject(value: unknown): value is Record<string, unknown> {
 }
 
 function main() {
-  // Stdin keeps the private reference out of shell history and process arguments.
-  if (process.argv.length !== 2) fail('Supply the 1Password field reference on stdin, not as an argument.')
-  const reference = readFileSync(0, 'utf8').replace(/\r?\n$/, '')
-  if (!/^op:\/\/[^/\x00-\x1f\x7f]+\/[^/\x00-\x1f\x7f]+\/[^/\x00-\x1f\x7f]+$/.test(reference)) {
-    fail('Supply a valid op:// field reference.')
+  const args = process.argv.slice(2)
+  if (args.length && (args.length !== 1 || args[0] !== '--key-path-stdin')) {
+    fail('Use no arguments to reuse configuration, or --key-path-stdin to supply a missing App PEM path.')
   }
   const root = spawnSync('git', ['rev-parse', '--show-toplevel'], {
     encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
@@ -55,23 +54,64 @@ function main() {
     'fairfield-consulting': 169669603,
     ...existingIds,
   }
-  for (const id of [installationIds.macklinu, installationIds['fairfield-consulting']]) {
+  for (const id of Object.values(installationIds)) {
     if (typeof id !== 'number' || !Number.isSafeInteger(id) || id <= 0) fail('Installation IDs must be positive integers.')
+  }
+  const reuse = Object.hasOwn(config, 'private_key_path')
+  let keyPath: string
+  if (reuse) {
+    const path = config.private_key_path
+    if (typeof path !== 'string' || !isAbsolute(path) || /[\x00-\x1f\x7f]/.test(path)) {
+      fail('The configured App PEM path must be absolute. Correct the private local configuration.')
+    }
+    keyPath = path
+  } else {
+    // Read stdin only when the agent explicitly supplies a missing path.
+    if (args[0] !== '--key-path-stdin') {
+      fail('An App PEM path is required. Ask for the real file path and rerun with --key-path-stdin.')
+    }
+    const input = readFileSync(0, 'utf8').replace(/\r?\n$/, '')
+    if (!input || /[\x00-\x1f\x7f]/.test(input) || (input.startsWith('~') && !input.startsWith('~/'))) {
+      fail('Supply one local App PEM path on stdin.')
+    }
+    keyPath = resolve(input.startsWith('~/') ? join(process.env.HOME, input.slice(2)) : input)
+  }
+  let pem: Buffer | undefined
+  try {
+    const parentStat = lstatSync(dirname(keyPath))
+    const keyStat = lstatSync(keyPath)
+    if (!parentStat.isDirectory() || (parentStat.mode & 0o022) ||
+        !keyStat.isFile() || (keyStat.mode & 0o077) || !(keyStat.mode & 0o400)) {
+      throw new Error()
+    }
+    pem = readFileSync(keyPath)
+    const key = createPrivateKey({ key: pem, format: 'pem' })
+    if (key.asymmetricKeyType !== 'rsa') throw new Error()
+  } catch {
+    fail('The App key must be a readable, private RSA PEM file in a safe directory, without symlinks.')
+  } finally {
+    pem?.fill(0)
   }
   const agents = agentsStat ? readFileSync(agentsFile, 'utf8') : ''
 
   process.umask(0o077)
   mkdirSync(directory, { recursive: true, mode: 0o700 })
   chmodSync(directory, 0o700)
-  const temporary = mkdtempSync(join(directory, '.setup-'))
-  try {
-    const temporaryFile = join(temporary, 'config.json')
-    writeFileSync(temporaryFile, JSON.stringify({ ...config, private_key_reference: reference, installation_ids: installationIds }, null, 2) + '\n', {
-      mode: 0o600, flag: 'wx',
-    })
-    renameSync(temporaryFile, file)
-  } finally {
-    rmSync(temporary, { recursive: true, force: true })
+  if (!reuse || existingIds.macklinu === undefined || existingIds['fairfield-consulting'] === undefined ||
+      Object.hasOwn(config, 'private_key_reference')) {
+    delete config.private_key_reference
+    const temporary = mkdtempSync(join(directory, '.setup-'))
+    try {
+      const temporaryFile = join(temporary, 'config.json')
+      writeFileSync(temporaryFile, JSON.stringify({ ...config, private_key_path: keyPath, installation_ids: installationIds }, null, 2) + '\n', {
+        mode: 0o600, flag: 'wx',
+      })
+      renameSync(temporaryFile, file)
+    } finally {
+      rmSync(temporary, { recursive: true, force: true })
+    }
+  } else {
+    chmodSync(file, 0o600)
   }
   if (!agents.split(/\r?\n/).includes(instruction)) {
     writeFileSync(agentsFile, `${agents}${agents && !agents.endsWith('\n') ? '\n' : ''}${agents ? '\n' : ''}${instruction}\n`, {
