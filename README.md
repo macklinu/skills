@@ -7,3 +7,4 @@
 - [todo-txt](skills/todo-txt/) — Read and safely edit line-based todo.txt files.
 - [setup-macklinu-machine](skills/setup-macklinu-machine/) — Configure a private local App PEM path and installation IDs on macOS, and add the machine skill instruction to a repository.
 - [macklinu-machine](skills/macklinu-machine/) — Use pinned pnpx/tsx on macOS for GitHub App PRs and HTTPS pushes, and the bot identity for commits.
+- [machine-pr-feedback](skills/machine-pr-feedback/) — Address one GitHub review URL as the machine, publish verified fixes, and leave short replies in the original threads.
