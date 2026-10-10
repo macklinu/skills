@@ -1,6 +1,6 @@
 # HttpApi
 
-Read this only when the project uses `effect/unstable/httpapi` or an existing `HttpApi` definition. These modules are unstable; confirm exports against the pinned Effect version.
+Read this only when the project uses `effect/http-api` or an existing `HttpApi` definition. These modules are unstable; confirm exports against the pinned Effect version.
 
 - Keep `HttpApi`, groups, endpoints, schemas, and middleware contracts separate from server implementations so handlers, clients, OpenAPI, and tests share one contract.
 - Build handler implementations as Layers with `HttpApiBuilder`. Keep handlers thin: accept decoded input, call application services, and return declared success or error values.

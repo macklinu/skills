@@ -1,6 +1,6 @@
 # Effect CLI
 
-Read this only when the project imports `effect/unstable/cli`. Verify the unstable CLI surface against the pinned Effect version.
+Read this only when the project imports `effect/cli`. Verify the unstable CLI surface against the pinned Effect version.
 
 - Define typed commands with `Command.make`, reusable `Flag` / `Argument` values, and schemas that validate or transform parsed strings before handlers run.
 - Compose subcommands and shared flags declaratively. Keep domain behavior in services and make command handlers thin named effects.

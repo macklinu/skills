@@ -8,9 +8,9 @@ Prefer `effect/Cache` over a `Map` + timestamp + prune-loop cache when its keyed
 
 - `Cache.make({ capacity, lookup, timeToLive })` caches per-key lookups with one fixed TTL for all entries.
 - `Cache.makeWith(lookup, { capacity, timeToLive(exit, key) })` computes TTL per entry from the lookup's `Exit` — the tool for "cache successes, not failures".
-- Concurrent `Cache.get` calls for the same missing key share one pending lookup — dedupe is built in; do not add your own in-flight tracking.
+- Concurrent `Cache.get` calls for the same missing key share one pending lookup while its entry remains in the cache; eviction or invalidation can allow another lookup. Do not add your own in-flight tracking when these semantics fit.
 - `capacity` is required and bounds the cache; stop writing manual prune/evict loops.
-- Return a zero TTL (`0` or `"0 millis"`) from `timeToLive` to avoid caching transient failures or degraded fallbacks without failing the caller. A short negative-cache TTL can be appropriate for stable failures such as not-found results.
+- Return a zero TTL (`0` or `"0 millis"`) from `timeToLive` to avoid caching transient failures or degraded fallbacks. TTL does not change the lookup's success or failure for the caller. A short negative-cache TTL can be appropriate for stable failures such as not-found results.
 - `Cache.invalidate(cache, key)` / `Cache.refresh(cache, key)` handle explicit staleness; `Cache.has` checks without triggering a lookup.
 - Cache construction is effectful. Build the cache once in the owning layer/scope and share the handle; a cache built per call caches nothing.
 - For a single value (no key), use `Effect.cached(effect)` or `Effect.cachedWithTTL(effect, ttl)` instead of a one-key Cache.
@@ -35,7 +35,7 @@ const makeResolver = Effect.gen(function* () {
 })
 ```
 
-This replaces a hand-rolled `Map<string, { value, expiresAtMs }>` plus prune logic, and upgrades it: repeated rows pointing at the same key during one burst share a single provider call.
+This replaces a hand-rolled `Map<string, { value, expiresAtMs }>` plus prune logic. Repeated rows pointing at the same key share a pending provider call while its entry remains in the cache.
 
 ## Expensive Client Acquisition Belongs In The Layer, Not The Lookup
 

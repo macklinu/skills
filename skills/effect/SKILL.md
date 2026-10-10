@@ -17,7 +17,7 @@ Check these before guessing:
 - the project-pinned `effect` package source and version
 - current upstream Effect source when the installed package does not answer the question
 
-This local guidance was last reviewed against `effect@4.0.0-rc.111`. Before introducing an unstable or version-sensitive API, confirm its export path and signature in the project's pinned Effect version. The review version is a gardening baseline, not a substitute for the project source.
+This local guidance was last reviewed against `effect@4.0.3` source ([upstream revision](https://github.com/Effect-TS/effect/tree/35ec46efd001242a72f4a6027f9b89e220ae5eae)). Before introducing an unstable or version-sensitive API, confirm its export path and signature in the project's pinned Effect version. The review version is a gardening baseline, not a substitute for the project source.
 
 ## Branch Chooser
 
@@ -39,11 +39,11 @@ Read only the branch references that match the task.
 
 Load these opt-in package branches only after confirming the project uses the named package or module:
 
-- `effect/unstable/httpapi` / `HttpApi`: read `references/HTTP_API.md`.
-- `effect/unstable/sql` or an `@effect/sql-*` driver: read `references/SQL.md`.
-- `effect/unstable/reactivity` or an `@effect/atom-*` binding: read `references/ATOM.md`.
-- `effect/unstable/cli`: read `references/CLI.md`.
-- `effect/unstable/persistence`: read `references/PERSISTENCE.md`.
+- `effect/http-api` / `HttpApi`: read `references/HTTP_API.md`.
+- `effect/sql` or an `@effect/sql-*` driver: read `references/SQL.md`.
+- `effect/reactivity` or an `@effect/atom-*` binding: read `references/ATOM.md`.
+- `effect/cli`: read `references/CLI.md`.
+- `effect/persistence`: read `references/PERSISTENCE.md`.
 
 If a task spans several branches, read all matching files before editing.
 
