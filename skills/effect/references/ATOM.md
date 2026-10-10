@@ -1,6 +1,6 @@
 # Atom And Reactivity
 
-Read this only when the project uses `effect/unstable/reactivity` or an `@effect/atom-*` framework binding. Verify these unstable APIs against the pinned Effect version.
+Read this only when the project uses `effect/reactivity` or an `@effect/atom-*` framework binding. Verify these unstable APIs against the pinned Effect version.
 
 - Keep atoms at the reactive UI/application boundary. Domain rules, persistence, and external integrations should remain Effect services that atoms call.
 - Hoist stable atom definitions rather than recreating them during rendering. Use `Atom.family` for parameterized identity instead of ad hoc atom maps.

@@ -1,6 +1,6 @@
 # Effect SQL
 
-Read this only when the project uses `effect/unstable/sql` or an `@effect/sql-*` driver. Verify unstable SQL APIs against the pinned Effect version.
+Read this only when the project uses `effect/sql` or an `@effect/sql-*` driver. Verify unstable SQL APIs against the pinned Effect version.
 
 - Acquire the chosen driver Layer once in the application composition and run the migrator Layer explicitly before repositories serve traffic.
 - Keep SQL access behind repository services so application code depends on domain operations rather than `SqlClient`.

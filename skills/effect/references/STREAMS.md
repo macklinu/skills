@@ -4,7 +4,7 @@ Use this when working with `Stream`, event sources, async iterables, queue/pubsu
 
 ## Mental Model
 
-`Stream<A, E, R>` is an effectful source that can emit many `A` values over time, fail with `E`, and require services `R`. Streams are pull-based and backpressured; consumption controls demand.
+`Stream<A, E, R>` is an effectful source that can emit many `A` values over time, fail with `E`, and require services `R`. Consumption pulls values and controls downstream demand. A queue or callback source needs its own capacity and overflow policy; a stream does not automatically slow an external producer.
 
 Use streams for sources that are naturally many-valued and time-ordered:
 
@@ -81,7 +81,7 @@ Guidance:
 ## Queues, PubSub, And SubscriptionRef
 
 - Use `Queue` when each event/item should be consumed by one consumer or worker.
-- Use `PubSub` when every subscriber should see every event.
+- Use `PubSub` to broadcast to active subscribers. Dropping/sliding overflow can lose events, and late subscribers receive past events only when replay is configured.
 - Use `SubscriptionRef` when consumers need the current value and a stream of changes.
 - Expose a `Stream` from service interfaces when callers should consume events, not push into the queue.
 - Keep producer queues/private refs inside the implementation or test service.
@@ -116,13 +116,15 @@ Use `Stream.debounce(...)` for quiet-period behavior and `Stream.throttle(...)` 
 - Use `Stream.mapError(...)` to translate errors at boundaries.
 - Use `Stream.catchIf(...)`, `Stream.catchTag(...)`, or `Stream.catchFilter(...)` for typed recovery.
 - Use `Stream.catchCause(...)` only at explicit supervision boundaries.
-- Do not hide stream defects by default; let them reach the owning layer/runtime unless the stream is explicitly best-effort.
+- Do not hide stream defects by default. `Effect.forkScoped` owns the consumer lifetime but does not propagate its failure to the layer that forked it. Join from a supervising workflow or use an explicit supervisor when failure must fail the owner; do not block layer acquisition on a long-lived join.
 
 ## Keyed Concurrency
 
 For streams of work keyed by session/channel/id, prefer a named helper over ad hoc maps of fibers.
 
 If the codebase already has a keyed-run helper (for example a `runForEachKeyed` that runs different keys concurrently while serializing each key and coalescing pending values into one latest-value rerun), use it. Otherwise build one named helper with `FiberMap` rather than scattering fiber bookkeeping through consumers.
+
+`FiberMap` manages keyed fiber lifetime; it does not itself serialize work or coalesce pending values. Its default replacement interrupts the previous fiber, while `onlyIfMissing` skips new work for a running key. The helper must implement any serial/latest-rerun policy explicitly.
 
 Use this for projection/reconciliation streams where each key needs ordered processing but different keys can run in parallel.
 

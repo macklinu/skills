@@ -15,7 +15,7 @@ Use `Schedule` for retry, polling, pacing, and repeated background work instead 
 - Use `Schedule.exponential(...)` or `Schedule.fibonacci(...)` for backoff.
 - Add `Schedule.jittered` to avoid synchronized retry storms.
 - Use `Schedule.recurs(...)` for a counter schedule or `Schedule.upTo({ times })` to bound a delay schedule.
-- Use `Schedule.tapInput(...)` to log retry inputs.
+- Use `Schedule.tap(({ input }) => ...)` to log retry inputs.
 - Use `Schedule.tap(...)` when full schedule metadata matters.
 - Use `Effect.retryOrElse(...)` when exhausted retries need a fallback/reporting effect.
 - Retry only at the narrowest boundary with proven idempotency.
@@ -38,7 +38,7 @@ const run = pass.pipe(
 )
 ```
 
-This shape says expected operational pass failures are logged and the worker continues. Defects still defect and can reach supervision.
+This shape logs and discards typed pass failures so the worker continues. Defect-only causes still reach supervision; `Effect.ignore` can discard a mixed cause that also contains a typed failure.
 
 Use cause-level recovery only at supervision boundaries where the policy is truly "report non-interrupt failure and continue".
 
@@ -87,7 +87,7 @@ const reconcileWithRetry = (target: Target) =>
   reconcile(target).pipe(
     Effect.retryOrElse(
       projectionRetrySchedule.pipe(
-        Schedule.tapInput((error) =>
+        Schedule.tap(({ input: error }) =>
           Effect.logWarning("Agent.Projection.reconcile.retrying").pipe(
             Effect.annotateLogs({ operation: error.operation }),
           ),
@@ -113,6 +113,7 @@ const providerRetrySchedule: Schedule.Schedule<RateLimited, RateLimited> =
   Schedule.exponential("200 millis").pipe(
     Schedule.jittered,
     Schedule.upTo({ times: 5 }),
+    Schedule.setInputType<RateLimited>(),
     Schedule.passthrough,
     Schedule.modifyDelay(({ input, duration }) =>
       Effect.succeed(

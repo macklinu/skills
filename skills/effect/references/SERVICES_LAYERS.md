@@ -158,11 +158,13 @@ Guidance:
 For boundary errors with operation labels, prefer a shared curried `mapError` helper over hand-writing wrappers in every module.
 
 ```ts
-const persistenceError = operationError(PersistenceError.make)
+const persistenceError = operationError(PersistenceError.make.bind(PersistenceError))
 
 const row = yield* query.pipe(
   persistenceError("UserRepository.findById"),
 )
 ```
+
+Bind a schema error class's static `.make` when passing it as a callback; it uses the class receiver.
 
 Name the local helper after the error it produces, such as `persistenceError`, `projectionError`, or `processingError`. Use `Effect.fn(...)` and spans for observability in addition to payload labels, not instead of them.

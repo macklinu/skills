@@ -13,9 +13,9 @@ export const dataDirectoryConfig = Config.schema(
 export const layerFromEnvironment = Layer.effect(
   Configuration.Service,
   Effect.gen(function* () {
-    const apiKey = yield* Config.redacted("API_KEY")
-    const optionalModel = yield* Config.option(Config.string("MODEL"))
-    const enabled = yield* Config.boolean("FEATURE_ENABLED").pipe(
+    const apiKey = yield* Config.Redacted("API_KEY")
+    const optionalModel = yield* Config.option(Config.String("MODEL"))
+    const enabled = yield* Config.Boolean("FEATURE_ENABLED").pipe(
       Config.withDefault(false),
     )
 
@@ -28,11 +28,11 @@ export const layerFromEnvironment = Layer.effect(
 
 - `Config<T>` is yieldable and reads the current `ConfigProvider` reference.
 - The default provider is `ConfigProvider.fromEnv()`.
-- Use `Config.redacted(...)` for credentials.
-- Use `Config.schema(...)` or `Config.mapOrFail(...)` for refined values.
+- Use `Config.Redacted(...)` for credentials.
+- Use `Config.schema(...)` for refined values.
 - Use `Config.option(...)` for semantic absence.
-- Use `Config.withDefault(...)` for missing-data defaults only; malformed values still fail.
-- Use `Config.orElse(...)` only when intentionally catching any config parse failure.
+- Use `Config.withDefault(...)` for semantic-absence defaults. Invalid values in a relevant provider representation and source errors still fail; an incompatible provider shape can count as absence.
+- Use `Config.orElse(...)` only when intentionally replacing absence or any `ConfigError`, including source failures. Defects and interruptions still propagate.
 - Use `Config.unwrap(...)` / `Config.Wrap<T>` for `layerConfig(...)` helpers.
 
 ## Providers
