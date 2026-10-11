@@ -21,6 +21,8 @@ Confirm the worktree, repository, head, base, and every commit/change to publish
 
 Read the [PR listing guide](https://docs.github.com/en/rest/pulls/pulls#list-pull-requests) and [CLI API guide](https://cli.github.com/manual/gh_api) to find all open matches by both repository names and head/base refs. Reuse the unique exact match. Ambiguous matches require a decision; uncertain creation requires a fresh lookup before another create.
 
+Use `--paginate --jq` for per-page matching and inspect every page. With `--paginate --slurp`, process collected JSON outside the runner; do not combine `--slurp` with `--jq` or `--template`.
+
 When creating a PR or changing its title/body, load `pr-description`. For a new PR, read the [CLI creation guide](https://cli.github.com/manual/gh_pr_create) and supply explicit head/base; `--head` prevents implicit CLI push/fork behavior. Preserve the requested/existing draft state. Check the resulting PR's full commit/diff scope, published body, and author; report reused human authorship accurately instead of creating a duplicate.
 
 **Gate:** exactly one open PR matches the repository, head/base, published SHA, and intended scope; its body is accurate and author is verified. Claim machine authorship only for a bot-authored PR.
