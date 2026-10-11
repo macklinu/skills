@@ -46,7 +46,7 @@ Add only missing `oxlint`, `oxfmt`, and `lefthook` development dependencies with
 
 - Inspect hook ownership and `core.hooksPath` before allowing Lefthook's postinstall. Preserve foreign hooks; do not use `--force`, reset hook paths, approve unrelated builds, or change global policy.
 - Run `oxlint --init` and `oxfmt --init` through the local package-manager executor only when no supported root config exists. Reuse JSONC/JS/TS variants and preserve rules/style; Oxlint init can overwrite files.
-- Merge tool ignores for `vendor/**`, `repos/**`, installed third-party skills, and actual generated output. Append missing Node/output rules to `.gitignore`, including `.turbo/` when used. Do not ignore lockfiles or tracked source.
+- Merge `repos/**` into both Oxlint and Oxfmt ignore patterns, along with installed third-party skills and actual generated output. Append missing Node/output rules to `.gitignore`, including `.turbo/` when used. Do not ignore lockfiles or tracked source.
 
 Add unused script names; preserve working scripts and intentional existing workspace boundaries:
 
@@ -77,12 +77,12 @@ Adapt executors for an existing package manager. Follow [Lefthook staged-file ha
 Follow the [Skills CLI guide](https://github.com/vercel-labs/skills#readme). Before running these commands, append explicit `--agent` targets for only this project's active agents, using supported names. Use project scope, omit already-installed skills, and preserve customized destinations: the CLI can auto-confirm replacement. Never use `--all` or `--global`.
 
 ```sh
-npx --yes skills@latest add github/awesome-copilot --skill conventional-commit --yes
-npx --yes skills@latest add macklinu/skills --skill macklinu-code-style pr-description --yes
-npx --yes skills@latest add mattpocock/skills --skill setup-matt-pocock-skills grill-with-docs grilling domain-modeling codebase-design to-spec to-tickets implement-spec implement tdd code-review triage writing-for-agents --yes
+pnpx skills@latest add github/awesome-copilot --skill conventional-commit --yes
+pnpx skills@latest add macklinu/skills --skill macklinu-code-style pr-description --yes
+pnpx skills@latest add mattpocock/skills --skill '*' --yes
 ```
 
-Read the installed skills and their references. Reuse this setup skill; add domain/machine skills only when applicable and publicly available. Exclude `todo-txt` and `obsidian-inbox-triage`. Do not activate an alternative hook setup. If an existing pnpm engine contract rejects npx, use `pnpm dlx skills@latest` with the same arguments; do not weaken that contract.
+Read the installed skills and their references. Reuse this setup skill; add domain/machine skills only when applicable and publicly available. Exclude `todo-txt` and `obsidian-inbox-triage`. Do not activate an alternative hook setup.
 
 Run lint/format checks, validate and exercise the actual hook, and list local skills. For fresh projects, run real workspace builds and verify dependency order and output handling; a zero-task run is not build proof. Run existing type/test checks when applicable. On reruns, skip initializers and skill reinstalls; use the existing lockfile without upgrades and verify preservation. Do not reformat unrelated user work.
 
