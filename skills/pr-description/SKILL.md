@@ -29,7 +29,7 @@ Distinguish implementation assumptions from stated requirements and unverified r
 For every PR that changes a user-visible surface, include before-and-after evidence in a Markdown table.
 
 1. Capture the same state before and after the change, with useful alt text.
-2. Add both image references to the body before the PR command. Use this structure unless the template requires another location:
+2. Prepare both image references for the attachment step. Use this structure unless the template requires another location:
 
    ```markdown
    | Before                                       | After                                                        |
@@ -45,7 +45,7 @@ For every PR that changes a user-visible surface, include before-and-after evide
    gh pr edit --help
    ```
 
-4. Use only the attachment behavior documented by that `gh` version. Attach files in the same `gh pr create` or `gh pr edit` command when it supports uploads, so GitHub can replace local references with uploaded asset URLs.
+4. Use only the attachment behavior documented by that `gh` version. For machine publication, follow `macklinu-machine`'s image-upload policy and operation order. Otherwise, attach files in the same `gh pr create` or `gh pr edit` command when it supports uploads, so GitHub can replace local references with uploaded asset URLs.
 5. Re-read the created or updated PR body. Confirm that the table shows both images, has useful alt text, and links to uploaded assets instead of local paths.
 
 Never fabricate visual evidence. Omit the table when the change has no visual effect.
