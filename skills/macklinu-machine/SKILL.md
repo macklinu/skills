@@ -1,6 +1,6 @@
 ---
 name: macklinu-machine
-description: Use the macklinu-machine GitHub App for PR/API commands, commits, and HTTPS pushes in macklinu or fairfield-consulting repositories. Use when asked to publish as the machine or when AGENTS.md requires it. Never fall back to personal credentials.
+description: Use the macklinu-machine GitHub App for PR/API commands, commits, and HTTPS pushes in macklinu or fairfield-consulting repositories. Use when asked to publish as the machine or when AGENTS.md requires it. Personal authentication is limited to the image-upload exception below.
 compatibility: macOS only. Requires Node.js 22+, pnpm 10.2+ (pnpx), and Git; publication also needs gh and a local GitHub App RSA PEM.
 ---
 
@@ -23,7 +23,15 @@ pnpx --allow-build=esbuild tsx@4.23.15 /absolute/path/to/macklinu-machine/script
 - Use `gh pr` with its normal subcommand and arguments, such as `gh pr view 9`. For repository REST calls, put the endpoint immediately after `api`, such as `gh api repos/{owner}/{repo}/pulls`.
 - Use `push HEAD:refs/heads/BRANCH` to update the intended branch at `https://github.com/OWNER/REPO.git`. Refs and normal push flags follow the operation. Do not change the destination, transport, or submodule behavior. Remove Git URL rewrites before pushing.
 
-Use the same repository for every operation. No cross-repository URLs/endpoints, repository/host overrides, replacement authentication headers, or verbose HTTP logging. Auth commands, extensions, and other `gh` commands are blocked. Stop on authentication failure; do not retry with personal credentials.
+Use the same repository for every operation. No cross-repository URLs/endpoints, repository/host overrides, replacement authentication headers, or verbose HTTP logging. Auth commands, extensions, and other `gh` commands are blocked by the runner. Stop on authentication failure; never use personal credentials except as specified below.
+
+## Image-upload exception
+
+Keep commits, pushes, PR creation, review replies, review requests, and all other publication machine-authenticated. Only image attachment uploads unsupported by CLI App authentication may use the existing active `macklinu` login on `github.com`. Accept a reported `unsupported authentication type` error without repeating the failed upload.
+
+- Follow installed CLI help for syntax. Prefer a separate user-authenticated image upload and machine-authenticated URL insertion only if help documents standalone attachment uploads. Otherwise, create the PR through the runner without attachments, verify its machine author, then allow only an image-only body edit on that existing PR through the user login. Preserve all non-image content; change no other PR fields.
+- For the account check and upload/edit, use direct `gh` children, not the runner. Remove inherited `GH_TOKEN`, `GITHUB_TOKEN`, `GH_ENTERPRISE_TOKEN`, `GITHUB_ENTERPRISE_TOKEN`, `GH_DEBUG`, and `DEBUG` only from those children; target the same repository and host explicitly. Follow `gh auth status --help` to verify the active login is `macklinu` on `github.com` and authentication is valid. Output only host, login, and status fields, never tokens.
+- Stop if the expected login is unavailable or an operation fails. Do not switch logins, copy/store personal tokens, change global authentication state, or use this exception as a generic failure fallback. Return to the runner for all remaining publication.
 
 ## Private configuration and credentials
 
