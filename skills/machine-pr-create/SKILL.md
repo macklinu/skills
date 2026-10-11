@@ -1,6 +1,6 @@
 ---
 name: machine-pr-create
-description: Open or reuse the intended checkout's PR as macklinu-machine and request macklinu as reviewer. Invoke manually with optional PR context.
+description: Create or reuse a machine PR and request macklinu's review.
 disable-model-invocation: true
 compatibility: Requires macklinu-machine and a writable same-repository PR head.
 ---
@@ -9,13 +9,26 @@ compatibility: Requires macklinu-machine and a writable same-repository PR head.
 
 Invocation: `/machine-pr-create [PR context]`; context may specify purpose, base, or draft intent.
 
-Read repository instructions and follow `macklinu-machine` for **every GitHub operation, commit, push, and identity check**. Follow `pr-description` for PR writing. If code work is needed, follow `macklinu-code-style` and conditional `effect` guidance. Use only the machine skill's supported repository scope and runner, including when following linked guides.
+Read repository instructions and load `macklinu-machine`. Use its runner for every GitHub operation, commit, and push, including linked-guide commands; follow it for identity checks.
 
-## Workflow
+## 1. Publish the intended work
 
-1. Confirm the intended worktree, repository, head branch, base, and complete commit/diff scope. Use the requested or established base; otherwise use the current repository default. Preserve unrelated work and user commits. Prepare only missing intended commits, publish normally, and verify the remote head matches local HEAD. Stop if targeting or publication is uncertain.
-2. Follow the [PR listing guide](https://docs.github.com/en/rest/pulls/pulls#list-pull-requests) and [CLI API guide](https://cli.github.com/manual/gh_api) to find all open head/base matches. Match both repository names and refs, not branch names alone. Reuse the unique exact PR; update its description only when needed. Recheck after uncertain creation, rather than creating a duplicate or reopening a closed PR.
-3. With no match, follow the [CLI creation guide](https://cli.github.com/manual/gh_pr_create) using the `pr-description` result and explicit head/base. Explicit `--head` prevents implicit CLI push/fork behavior. Preserve draft intent. Confirm the open PR's target, published SHA, body, complete scope, and bot author; a reused human-authored PR does not become bot-authored.
-4. Follow the [review-request guide](https://docs.github.com/en/rest/pulls/review-requests) to request the user `macklinu` on new and reused PRs. Check pending reviewers first: already pending means verify and skip, never remove/re-add. A completed review is not pending. Use a reviewer request, not an assignee or mention, and verify actual pending state after requesting.
+Confirm the worktree, repository, head, base, and every commit/change to publish. Use the requested or established base; otherwise use the current repository default. Preserve unrelated work and existing user commits. For changes or verification, load `macklinu-code-style`; for production TypeScript changes, also load the relevant `effect` references. Prepare only missing intended commits and publish normally.
 
-Keep draft/ready state unchanged. If the PR author is `macklinu`, report the self-review restriction. Report permission/API constraints separately from publication; do not claim success or change state to bypass them. Inspect current state before retrying an uncertain write. Report the PR URL and any blocker; do not merge.
+**Gate:** the complete intended scope is accounted for, bot identities are verified for new commits, and the remote head equals local HEAD. Uncertain targeting/publication stops PR writes.
+
+## 2. Select or create the PR
+
+Read the [PR listing guide](https://docs.github.com/en/rest/pulls/pulls#list-pull-requests) and [CLI API guide](https://cli.github.com/manual/gh_api) to find all open matches by both repository names and head/base refs. Reuse the unique exact match. Ambiguous matches require a decision; uncertain creation requires a fresh lookup before another create.
+
+When creating a PR or changing its title/body, load `pr-description`. For a new PR, read the [CLI creation guide](https://cli.github.com/manual/gh_pr_create) and supply explicit head/base; `--head` prevents implicit CLI push/fork behavior. Preserve the requested/existing draft state. Check the resulting PR's full commit/diff scope, published body, and author; report reused human authorship accurately instead of creating a duplicate.
+
+**Gate:** exactly one open PR matches the repository, head/base, published SHA, and intended scope; its body is accurate and author is verified. Claim machine authorship only for a bot-authored PR.
+
+## 3. Request review
+
+Read the [review-request guide](https://docs.github.com/en/rest/pulls/review-requests). For the selected PR, check current state/head/author and pending reviewers. Pending `macklinu` means verify and skip—never remove/re-add. Otherwise request the user `macklinu`, not an assignee or mention. A completed review is not pending.
+
+If the author is `macklinu`, report the self-review restriction. Preserve PR stage and report state/permission/API refusals separately from publication. Inspect current state before retrying uncertain writes; keep this workflow limited to publication and review requesting, not merge.
+
+**Gate:** `macklinu` is verified pending, or the exact reviewer blocker is recorded. Handoff: PR URL, published SHA, and reviewer outcome.
