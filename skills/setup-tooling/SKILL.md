@@ -82,7 +82,7 @@ pnpx skills@latest add macklinu/skills --skill macklinu-code-style pr-descriptio
 pnpx skills@latest add mattpocock/skills --skill '*' --yes
 ```
 
-Read the installed skills and their references. Reuse this setup skill; add domain/machine skills only when applicable and publicly available. Exclude `todo-txt` and `obsidian-inbox-triage`. Do not activate an alternative hook setup.
+Read the installed skills and their references. Reuse this setup skill; add domain/machine skills only when applicable and publicly available. Do not activate an alternative hook setup.
 
 Run lint/format checks, validate and exercise the actual hook, and list local skills. For fresh projects, run real workspace builds and verify dependency order and output handling; a zero-task run is not build proof. Run existing type/test checks when applicable. On reruns, skip initializers and skill reinstalls; use the existing lockfile without upgrades and verify preservation. Do not reformat unrelated user work.
 
