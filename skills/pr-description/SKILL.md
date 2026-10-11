@@ -12,6 +12,8 @@ Distinguish implementation assumptions from stated requirements and unverified r
 
 ## Workflow
 
+Before any GitHub command, including help, read repository instructions and select the requested or required publishing identity. When `macklinu-machine` is requested or required, load that skill and use its runner for GitHub commands; only its image-upload exception permits direct user-authenticated commands.
+
 1. Read `.github/PULL_REQUEST_TEMPLATE.md` if it exists.
    - Keep its headings, fields, and checkboxes.
    - Fill each applicable field briefly and set checkboxes accurately. Do not remove template fields or leave applicable fields empty.
@@ -37,16 +39,9 @@ For every PR that changes a user-visible surface, include before-and-after evide
    | ![Before: empty profile state](./before.png) | ![After: empty profile state with retry action](./after.png) |
    ```
 
-3. Immediately before creating or editing the PR, run the applicable current help command:
-
-   ```sh
-   gh pr create --help
-   # or
-   gh pr edit --help
-   ```
-
+3. Immediately before creating or editing the PR, read the applicable current `gh pr create --help` or `gh pr edit --help` through the selected identity's workflow.
 4. Use only the attachment behavior documented by that `gh` version. For machine publication, follow `macklinu-machine`'s image-upload policy and operation order. Otherwise, attach files in the same `gh pr create` or `gh pr edit` command when it supports uploads, so GitHub can replace local references with uploaded asset URLs.
-5. Re-read the created or updated PR body. Confirm that the table shows both images, has useful alt text, and links to uploaded assets instead of local paths.
+5. Re-read the created or updated PR body even if the attachment command exits non-zero: partial uploads can still create or update the PR. Confirm that the table shows both images, has useful alt text, and links to uploaded assets instead of local paths. Report incomplete evidence; do not repeat the command without checking the resulting PR.
 
 Never fabricate visual evidence. Omit the table when the change has no visual effect.
 
