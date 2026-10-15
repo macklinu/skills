@@ -33,12 +33,10 @@ You need Herdr, its `herdr-projects` plugin, omp, and Worktrunk for code worktre
 
    The first open starts the coordinator in the project folder. Answer any trust prompt yourself. Its generated `AGENTS.md` points to the native skill and context commands; do not customize that generated file.
 
-4. Send this prompt using omp's manual skill-command syntax.
+4. Invoke the skill in the coordinator session.
 
    ```text
    /skill:setup-project-coordinator
-
-   Load this project's native coordinator instructions, current context, PROJECT.md instructions, MEMORY.md index, and relevant linked memory files. Report the loaded constraints and ask me for the first task; do not start tasks or publish changes.
    ```
 
 Keep project constraints in native project instructions and regular memory files, not symlinked memory or generated instruction edits. Loading the index does not load its linked files. Give a separate, bounded task request when you want work to start.

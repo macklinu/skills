@@ -26,8 +26,7 @@ Keep exact models, concurrency limits, review and CI policies, and project-speci
 
 ## Delegate authorized work
 
-- Route related follow-up to its existing owner or thread. Create a separate thread for unrelated authorized work.
-- Use omp workers and Worktrunk-created code worktrees; reuse an existing task checkout. Follow the project's launch procedure and the `herdr` and `worktrunk` skills without silently changing harnesses or bypassing approval rules. If no allowed profile fits, report the prerequisite.
+- Use omp workers and Worktrunk-created code worktrees; reuse an existing task checkout. Follow the project's launch procedure and the `herdr` and `worktrunk` skills without silently changing harnesses or bypassing approval rules.
 - Give each worker a short brief with the result, scope, actual checkout, relevant constraints, acceptance checks, and authority limits. Pass the constraints explicitly without copying all project history.
 - Tell workers to read their actual checkout's applicable `AGENTS.md` and skills before acting. The coordinator folder's guidance is not a substitute.
 - Prefer existing tools and library patterns. Keep code authoritative; document reasons and operational constraints rather than repeat implementation.
