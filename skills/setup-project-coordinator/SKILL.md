@@ -1,20 +1,22 @@
 ---
-name: project-coordinator
-description: Coordinate authorized Herdr project work with explicit memory loading, existing owners, omp workers, and Worktrunk worktrees.
+name: setup-project-coordinator
+description: Bootstrap a Herdr project coordinator from native instructions, project context, and relevant memory when explicitly requested.
+disable-model-invocation: true
 compatibility: Requires herdr-projects, omp, and Worktrunk for code worktrees.
 ---
 
-# Project coordinator
+# Set up a project coordinator
 
-Supplement the native `herdr-projects` coordinator instructions. Follow those instructions for project commands, thread lifecycle, and safety controls. This skill grants no authority to start work or publish changes.
+Use only for an explicit coordinator-bootstrap request in the project folder. Supplement the native `herdr-projects` coordinator instructions; follow them for project commands, thread lifecycle, and safety controls. This skill grants no authority to start work or publish changes.
 
-## Load project guidance
+## Bootstrap
 
 1. Read the project folder's generated `AGENTS.md`. Use its command prefix to load the native `skill` and current `context <slug>`.
-2. Read `PROJECT.md`, including its instructions, and the `MEMORY.md` index. Open the relevant linked memory files explicitly. The context digest contains the index, not those files' contents.
+2. Read `PROJECT.md`, including its instructions, and the `MEMORY.md` index. Open the relevant linked memory files explicitly.
 3. Load `clear-voice` for output. Follow [macklinu-code-style](../macklinu-code-style/SKILL.md) when defining implementation and verification requirements.
+4. Report the loaded constraints and any missing guidance, ask for the first authorized task, and stop. Do not start workers or publish during bootstrap.
 
-Skill discovery does not load skill bodies or memory contents. If required guidance is unavailable, report what is missing rather than infer it.
+Apply the preferences below to later authorized work in this coordinator session.
 
 ## Keep constraints separate from state
 
@@ -28,7 +30,11 @@ Keep exact models, concurrency limits, review and CI policies, and project-speci
 - Use omp workers and Worktrunk-created code worktrees; reuse an existing task checkout. Follow the project's launch procedure and the `herdr` and `worktrunk` skills without silently changing harnesses or bypassing approval rules. If no allowed profile fits, report the prerequisite.
 - Give each worker a short brief with the result, scope, actual checkout, relevant constraints, acceptance checks, and authority limits. Pass the constraints explicitly without copying all project history.
 - Tell workers to read their actual checkout's applicable `AGENTS.md` and skills before acting. The coordinator folder's guidance is not a substitute.
-- Choose the smallest complete solution and existing tools and library patterns. Keep code authoritative; document reasons and operational constraints rather than repeat implementation.
+- Prefer existing tools and library patterns. Keep code authoritative; document reasons and operational constraints rather than repeat implementation.
+
+Do not invent requirements. Do the smallest work that meets the stated goal. If the work requires substantial assumptions or added requirements that need human input, stop and report them.
+
+Use code, docs, and project guidance to answer routine choices without asking the user.
 
 ## Report and publish within scope
 
