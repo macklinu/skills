@@ -8,5 +8,6 @@
 - [macklinu-machine](skills/macklinu-machine/) — Use pinned pnpx/tsx on macOS for GitHub App PRs and HTTPS pushes, and the bot identity for commits.
 - [machine-pr-create](skills/machine-pr-create/) — Open or reuse the intended PR as the machine and request macklinu as reviewer.
 - [machine-pr-feedback](skills/machine-pr-feedback/) — Handle one PR review as the machine, reply briefly, and re-request macklinu after published fixes.
+- [setup-project-coordinator](skills/setup-project-coordinator/) - Manually bootstrap a Herdr coordinator with explicit memory loading and bounded worker briefs.
 
 Invoke `/setup-tooling` in the target repository: fresh projects use a framework-neutral pnpm 12/Turborepo monorepo; existing repos keep their structure and build conventions. Then use `/setup-matt-pocock-skills` to confirm tracker/project settings before guided product/spec work.
