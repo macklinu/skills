@@ -65,3 +65,8 @@ type RequestState<T> =
 
 - Keep each module focused on one responsibility. When an entry point mixes concerns, separate view rendering, runtime wiring, and domain logic into appropriate modules.
 - When dependent changes are easier to review separately, use a small ordered stack of pull requests. Keep unrelated refactors out of the feature change.
+
+## References
+
+- For TypeScript callback contracts, state models, or Effect-specific patterns, read [Applying the current rules](references/APPLYING_RULES.md).
+- To review unresolved preferences or supply examples, use [Draft preference questions](references/PREFERENCES_DRAFT.md). This material is non-normative; unanswered questions and example slots do not change the rules above.
