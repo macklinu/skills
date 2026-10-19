@@ -19,8 +19,10 @@ Before any GitHub command, including help, read repository instructions and sele
    - Fill each applicable field briefly and set checkboxes accurately. Do not remove template fields or leave applicable fields empty.
    - Template requirements take priority over the default format.
 2. Without a template, use one `## Summary` section with brief bullets about the result.
-3. Add a Mermaid diagram, short code sample, or visual description only when it is clearer than prose.
-   - Do not duplicate the issue or diff.
+3. If a visual explains the change better than prose, load `show-me` to choose the smallest useful format.
+   - Do not repeat the same point in prose and a visual or restate the issue or diff.
+   - Use GitHub-supported Markdown. Follow GitHub's [code block guide](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/creating-and-highlighting-code-blocks) and [diagram guide](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/creating-diagrams) for rendering limits. Do not assume renderer-specific output works on GitHub.
+   - Local HTML files and artifact paths are not usable PR evidence. Explanatory illustrations do not replace the visual evidence required below.
 4. Do not list commands, test runs, dependency installs, or routine setup.
    - When CI runs, let it report testing. Do not add a testing section unless the template requires it.
    - If no CI exists and verification needs a note, write one outcome sentence without command history.
