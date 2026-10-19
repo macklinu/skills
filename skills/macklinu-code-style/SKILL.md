@@ -65,3 +65,7 @@ type RequestState<T> =
 
 - Keep each module focused on one responsibility. When an entry point mixes concerns, separate view rendering, runtime wiring, and domain logic into appropriate modules.
 - When dependent changes are easier to review separately, use a small ordered stack of pull requests. Keep unrelated refactors out of the feature change.
+
+## Preference review
+
+To review preferences or add examples, use the [draft worksheet](references/PREFERENCES_DRAFT.md).
