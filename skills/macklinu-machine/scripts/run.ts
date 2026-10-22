@@ -70,8 +70,8 @@ async function main() {
   const [owner, name] = repository.split('/')
   const gitOptions: string[] = []
   if (operation === 'gh') {
-    // Auth, extensions and aliases can print or pass the token to arbitrary programs.
-    if (!['pr', 'api'].includes(args[0])) fail('Only gh pr and repository API commands are allowed.')
+    // Only the named stack extension may use the verified personal login below.
+    if (!['pr', 'api', 'stack'].includes(args[0])) fail('Only gh pr, gh stack and repository API commands are allowed.')
     if (args.some(arg => /^--verbose(?:=|$)/.test(arg))) {
       fail('HTTP request logging is not allowed.')
     }
@@ -80,6 +80,10 @@ async function main() {
     }
     if (args.some(arg => /^https?:\/\//i.test(arg) && !arg.startsWith(`https://github.com/${repository}/`))) {
       fail('Cross-repository URLs are not allowed.')
+    }
+    if (args[0] === 'stack' && args.some(arg => /^https?:\/\//i.test(arg) &&
+        !new RegExp(`^https://github\\.com/${owner}/${name.replaceAll('.', '\\.')}/pull/[1-9][0-9]*$`).test(arg))) {
+      fail('Stack PR URLs must name an existing PR in the target repository.')
     }
     if (args[0] === 'api') {
       const endpoint = args[1]?.replaceAll('{owner}', owner).replaceAll('{repo}', name)
@@ -108,6 +112,28 @@ async function main() {
     gitOptions.push('-c', 'push.recurseSubmodules=no')
   }
   if (process.env.NODE_TLS_REJECT_UNAUTHORIZED === '0') fail('TLS certificate verification must be enabled.')
+
+  if (operation === 'gh' && args[0] === 'stack') {
+    const stackEnvironment = { ...environment, GH_REPO: repository }
+    const status = spawnSync('gh', [
+      'auth', 'status', '--active', '--hostname', 'github.com', '--json', 'hosts',
+      '--jq', '.hosts["github.com"] | map({host, login, active, state})',
+    ], { env: stackEnvironment, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+    let accounts: unknown
+    try {
+      accounts = JSON.parse(status.stdout)
+    } catch {
+      fail('Cannot verify the active personal GitHub account.')
+    }
+    if (status.error || status.status !== 0 || !Array.isArray(accounts) || accounts.length !== 1 ||
+        !isObject(accounts[0]) || accounts[0].host !== 'github.com' || accounts[0].login !== 'macklinu' ||
+        accounts[0].active !== true || accounts[0].state !== 'success') {
+      fail('gh stack requires the active, valid macklinu login on github.com.')
+    }
+    const result = spawnSync('gh', args, { env: stackEnvironment, stdio: 'inherit' })
+    process.exitCode = result.status ?? 1
+    return
+  }
 
   let installationId: number
   let keyPath: string

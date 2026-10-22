@@ -12,7 +12,7 @@ Distinguish implementation assumptions from stated requirements and unverified r
 
 ## Workflow
 
-Before any GitHub command, including help, read repository instructions and select the requested or required publishing identity. When `macklinu-machine` is requested or required, load that skill and use its runner for GitHub commands; only its image-upload exception permits direct user-authenticated commands.
+Before any GitHub command, including help, read repository instructions and select the requested or required publishing identity. When `macklinu-machine` is requested or required, load that skill and use its runner for GitHub commands, including its verified personal-user `gh stack` path. Only its image-upload exception permits direct user-authenticated commands.
 
 1. Read `.github/PULL_REQUEST_TEMPLATE.md` if it exists.
    - Keep its headings, fields, and checkboxes.
