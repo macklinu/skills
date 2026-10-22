@@ -1,6 +1,6 @@
 ---
 name: macklinu-machine
-description: Use the macklinu-machine GitHub App for PR/API commands, commits, and HTTPS pushes in macklinu or fairfield-consulting repositories. Use when asked to publish as the machine or when AGENTS.md requires it. Only gh stack commands and the image-upload exception use the personal macklinu login.
+description: Use the macklinu-machine GitHub App for PR/API commands, exact-commit HTTPS fetches, commits, and HTTPS pushes in macklinu or fairfield-consulting repositories. Use when asked to publish as the machine or when AGENTS.md requires it. Only gh stack commands and the image-upload exception use the personal macklinu login.
 compatibility: macOS and Linux. Requires Node.js 22+, pnpm 10.2+ (pnpx), and Git; machine publication also needs gh and a local GitHub App RSA PEM.
 ---
 
@@ -15,7 +15,7 @@ pnpx --allow-build=esbuild tsx@4.23.15 /absolute/path/to/macklinu-machine/script
 | Operation | Prerequisites |
 | --- | --- |
 | `commit` | Git; no machine configuration, key, or token. |
-| `gh pr`, `gh api`, `push` | Private local configuration, a readable App RSA PEM, and `gh`. |
+| `gh pr`, `gh api`, `push`, `fetch` | Private local configuration, a readable App RSA PEM, and `gh`. |
 | `gh stack` | The official `github/gh-stack` extension and the existing active, valid `macklinu` login on `github.com`; no App configuration, key, or token. |
 
 ## Commands
@@ -23,6 +23,7 @@ pnpx --allow-build=esbuild tsx@4.23.15 /absolute/path/to/macklinu-machine/script
 - Stage only intended files, then use `commit -m 'Describe the change'`. Do not override `--author`. Include `--reset-author` when amending or reusing a commit message. Verify both author and committer as `macklinu-machine[bot] <340227694+macklinu-machine[bot]@users.noreply.github.com>`.
 - Use `gh pr` with its normal subcommand and arguments, such as `gh pr view 9`. For repository REST calls, put the endpoint immediately after `api`, such as `gh api repos/{owner}/{repo}/pulls`.
 - Use `push HEAD:refs/heads/BRANCH` to update the intended branch at `https://github.com/OWNER/REPO.git`. Refs and normal push flags follow the operation. Do not change the destination, transport, or submodule behavior. Remove Git URL rewrites before pushing.
+- Use `fetch FULL_COMMIT_SHA` to download one exact 40-character commit SHA from `https://github.com/OWNER/REPO.git` into the object database and `FETCH_HEAD`; no options, branch names, arbitrary sources, or destination refspecs are accepted. Fetch does not check out files, move branches, fetch tags, prune refs, recurse into submodules, or run automatic maintenance. Remove Git URL rewrites first; this operation uses the App, not the personal login.
 
 Use the same repository for every operation. No cross-repository URLs/endpoints, repository/host overrides, replacement authentication headers, or verbose HTTP logging. Auth commands, other extensions, aliases, and other `gh` commands remain blocked. Stop on authentication failure; never use personal credentials except as specified below.
 
@@ -68,7 +69,9 @@ Use `/setup-macklinu-machine` for missing or legacy configuration. Keep the conf
 
 App and installation IDs are public identifiers, not credentials. The PEM is a credential; its actual path and local configuration are private metadata. Never include them, JWTs, tokens, or former provider metadata in source, logs, issues, PRs, or output.
 
-Machine publication reads the configured PEM, signs an App JWT in memory, and requests a fresh token limited to the named repository. The child receives `GH_TOKEN`, `GH_REPO`, and `GH_HOST=github.com`; inherited personal tokens and Git/gh tracing are removed. Pushes clear generic and URL-specific credential helpers and extra headers, then use `gh auth git-credential` with that token. Interactive fallback and submodule pushes are disabled. Failures return fixed errors; downstream exit status is preserved.
+Machine network commands read the configured PEM, sign an App JWT in memory, and request a fresh token limited to the named repository. The child receives `GH_TOKEN`, `GH_REPO`, and `GH_HOST=github.com`; inherited personal tokens and Git/gh tracing are removed. Pushes and fetches clear generic and URL-specific credential helpers and extra headers, then use `gh auth git-credential` with that token.
+
+Interactive fallback and submodule operations are disabled. Failures return fixed errors; downstream exit status is preserved.
 
 No key copy, token file/cache, retry, or permanent Git change is created. The PEM buffer is cleared after signing, but JavaScript/crypto copies can remain. The local key deliberately trusts the same user: tools, hooks, editors, pagers, process inspection and memory dumps can expose credentials. This is not a sandbox. Tokens can remain valid for up to one hour. Keep App permissions and installed repositories at the minimum needed.
 
