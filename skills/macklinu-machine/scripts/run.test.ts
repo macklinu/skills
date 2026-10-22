@@ -38,7 +38,7 @@ function fixture(t: TestContext) {
     installation_ids: { macklinu: 101, 'fairfield-consulting': 202 },
   }
   writeFileSync(file, JSON.stringify(config), { mode: 0o600 })
-  const requestMarker = join(root, 'request.json')
+  const requestMarker = join(root, '.git', 'request.json')
   const loader = join(root, 'fetch.ts')
   // Never use the network, even if a guard regresses.
   writeFileSync(loader, `
@@ -66,11 +66,22 @@ require('node:fs').writeFileSync(${JSON.stringify(childMarker)}, JSON.stringify(
 process.exit(17)
 `, { mode: 0o700 })
   const pushMarker = join(root, 'push.json')
+  const fetchMarker = join(root, '.git', 'fetch.json')
   writeFileSync(join(bin, 'git'), `#!${process.execPath}
 const args = process.argv.slice(2)
 if (args.includes('push')) {
   require('node:fs').writeFileSync(${JSON.stringify(pushMarker)}, JSON.stringify(args), { mode: 0o600 })
   process.exit(23)
+}
+if (args.includes('fetch')) {
+  const env = Object.fromEntries(['GH_TOKEN', 'GH_REPO', 'GH_HOST', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN', 'GH_DEBUG', 'DEBUG', 'GIT_TRACE', 'GIT_TERMINAL_PROMPT', 'GIT_ASKPASS', 'SSH_ASKPASS'].map(name => [name, process.env[name]]))
+  require('node:fs').writeFileSync(${JSON.stringify(fetchMarker)}, JSON.stringify({ args, env }), { mode: 0o600 })
+  if (!process.env.FIXTURE_FETCH_SOURCE) process.exit(29)
+  const url = args.indexOf('https://github.com/macklinu/example-repo.git')
+  if (url < 0) process.exit(99)
+  args[url] = process.env.FIXTURE_FETCH_SOURCE
+  const result = require('node:child_process').spawnSync('/usr/bin/git', args, { stdio: 'inherit' })
+  process.exit(result.status ?? 1)
 }
 const result = require('node:child_process').spawnSync('/usr/bin/git', args, { stdio: 'inherit' })
 process.exit(result.status ?? 1)
@@ -87,7 +98,7 @@ process.exit(result.status ?? 1)
   const runtimeArgs = [...process.execArgv, '--import', pathToFileURL(loader).href]
   return {
     root, home, file, directory, keyPath, keyDirectory, privateKey, publicKey,
-    config, requestMarker, childMarker, authMarker, stackMarker, pushMarker, env, runtimeArgs,
+    config, requestMarker, childMarker, authMarker, stackMarker, pushMarker, fetchMarker, env, runtimeArgs,
     run({ script = runScript, args, input }: { script?: string; args: string[]; input?: string }) {
       // Reuse tsx without a package download for every fixture command.
       return spawnSync(process.execPath, [...runtimeArgs, script, ...args], {
@@ -125,6 +136,17 @@ test('blocks credential-output, host and repository escapes without token reques
     ['push', 'HEAD', '--recurse-submodules=on-demand'],
     ['commit', '--auth=Someone Else <other@example.test>', '-m', 'fixture'],
     ['push', 'HEAD', '--rec=on-demand'],
+    ['fetch'],
+    ['fetch', 'main'],
+    ['fetch', 'a'.repeat(39)],
+    ['fetch', 'g'.repeat(40)],
+    ['fetch', `${'a'.repeat(40)}:refs/heads/main`],
+    ['fetch', 'https://github.com/macklinu/other.git'],
+    ['fetch', 'a'.repeat(40), 'HEAD:refs/heads/main'],
+    ['fetch', 'a'.repeat(40), '--tags'],
+    ['fetch', 'a'.repeat(40), '--recurse-submodules'],
+    ['fetch', 'a'.repeat(40), '--upload-pack=other'],
+    ['fetch', 'a'.repeat(40), '-c', 'credential.helper=other'],
   ]) {
     const result = f.run({ args: ['macklinu/example-repo', ...args] })
     assert.equal(result.status, 1, JSON.stringify(args))
@@ -132,6 +154,7 @@ test('blocks credential-output, host and repository escapes without token reques
     assert.equal(existsSync(f.childMarker), false)
     assert.equal(existsSync(f.authMarker), false)
     assert.equal(existsSync(f.pushMarker), false)
+    assert.equal(existsSync(f.fetchMarker), false)
   }
 })
 
@@ -264,6 +287,104 @@ test('push refuses URL rewrites before reading credentials', t => {
   assert.equal(result.status, 1)
   assert.equal(existsSync(f.requestMarker), false)
   assert.equal(existsSync(f.pushMarker), false)
+})
+
+test('fetch refuses URL rewrites before requesting an App token', t => {
+  const f = fixture(t)
+  assert.equal(spawnSync('git', ['config', 'url.ssh://fixture/.insteadOf', 'https://github.com/'], { cwd: f.root, env: f.env }).status, 0)
+  const result = f.run({ args: ['macklinu/example-repo', 'fetch', 'a'.repeat(40)] })
+  assert.equal(result.status, 1)
+  assert.equal(existsSync(f.requestMarker), false)
+  assert.equal(existsSync(f.fetchMarker), false)
+})
+
+test('fetch uses a repository-scoped App token and isolated Git authentication', t => {
+  const f = fixture(t)
+  for (const [key, value] of [
+    ['credential.helper', 'untrusted-helper'],
+    ['credential.https://github.com.helper', 'untrusted-host-helper'],
+    ['http.extraHeader', 'Authorization: untrusted'],
+    ['http.https://github.com/.extraHeader', 'Authorization: untrusted-host'],
+  ]) {
+    assert.equal(spawnSync('git', ['config', key, value], { cwd: f.root, env: f.env }).status, 0)
+  }
+  for (const owner of ['macklinu', 'fairfield-consulting']) {
+    const sha = 'abcdef0123456789abcdef0123456789abcdef01'
+    const result = f.run({ args: [`${owner}/example-repo`, 'fetch', sha] })
+    assert.equal(result.status, 29, result.stderr)
+    const request = JSON.parse(readFileSync(f.requestMarker, 'utf8'))
+    assert.deepEqual(JSON.parse(request.body), { repositories: ['example-repo'] })
+    const jwt = request.headers.Authorization.slice('Bearer '.length).split('.')
+    assert.equal(verify('RSA-SHA256', Buffer.from(`${jwt[0]}.${jwt[1]}`), f.publicKey, Buffer.from(jwt[2], 'base64url')), true)
+    assert.equal(JSON.parse(Buffer.from(jwt[1], 'base64url').toString()).iss, '5252838')
+    const child = JSON.parse(readFileSync(f.fetchMarker, 'utf8'))
+    assert.deepEqual(child.args.slice(child.args.indexOf('fetch')), [
+      'fetch', '--no-all', '--no-tags', '--no-prune', '--no-prune-tags', '--no-recurse-submodules',
+      '--no-auto-maintenance', '--no-write-commit-graph', '--refmap=',
+      `https://github.com/${owner}/example-repo.git`, sha,
+    ])
+    for (const key of ['credential.helper', 'credential.https://github.com.helper']) {
+      assert.ok(child.args.includes(`${key}=`))
+      assert.ok(child.args.includes(`${key}=!gh auth git-credential`))
+    }
+    for (const key of ['http.extraheader', 'http.https://github.com/.extraheader']) {
+      assert.ok(child.args.includes(`${key}=`))
+    }
+    assert.deepEqual(child.env, {
+      GH_TOKEN: 'fixture-token', GH_REPO: `${owner}/example-repo`, GH_HOST: 'github.com',
+      GIT_TERMINAL_PROMPT: '0', GIT_ASKPASS: '', SSH_ASKPASS: '',
+    })
+    assert.equal(existsSync(f.authMarker), false)
+    assert.equal(existsSync(f.stackMarker), false)
+  }
+})
+
+test('fetch populates the commit and FETCH_HEAD without changing refs, index or working files', t => {
+  const f = fixture(t)
+  const source = join(f.root, 'source')
+  mkdirSync(source)
+  const git = (cwd: string, ...args: string[]) => {
+    const result = spawnSync('/usr/bin/git', args, {
+      cwd, env: { ...f.env, GIT_AUTHOR_NAME: 'Fixture', GIT_AUTHOR_EMAIL: 'fixture@example.test',
+        GIT_COMMITTER_NAME: 'Fixture', GIT_COMMITTER_EMAIL: 'fixture@example.test' },
+      encoding: 'utf8',
+    })
+    assert.equal(result.status, 0, result.stderr)
+    return result.stdout
+  }
+  git(source, 'init', '-q')
+  writeFileSync(join(source, 'remote.txt'), 'remote commit')
+  git(source, 'add', 'remote.txt')
+  git(source, 'commit', '-qm', 'remote fixture')
+  git(source, 'tag', 'remote-tag')
+  const sha = git(source, 'rev-parse', 'HEAD').trim()
+  writeFileSync(join(f.root, 'local.txt'), 'local commit')
+  git(f.root, 'add', 'local.txt')
+  git(f.root, 'commit', '-qm', 'local fixture')
+  writeFileSync(join(f.root, 'local.txt'), 'local staged change')
+  git(f.root, 'add', 'local.txt')
+  writeFileSync(join(f.root, 'local.txt'), 'local unstaged change')
+  git(f.root, 'config', 'fetch.all', 'true')
+  git(f.root, 'config', 'fetch.prune', 'true')
+  git(f.root, 'config', 'fetch.pruneTags', 'true')
+  git(f.root, 'config', 'fetch.recurseSubmodules', 'true')
+  git(f.root, 'config', 'remote.origin.url', source)
+  git(f.root, 'config', 'remote.origin.fetch', '+refs/heads/*:refs/remotes/origin/*')
+  const refs = git(f.root, 'for-each-ref', '--format=%(refname) %(objectname)')
+  const head = readFileSync(join(f.root, '.git', 'HEAD'))
+  const status = git(f.root, 'status', '--porcelain=v1')
+  const index = readFileSync(join(f.root, '.git', 'index'))
+  f.env.FIXTURE_FETCH_SOURCE = source
+  const result = f.run({ args: ['macklinu/example-repo', 'fetch', sha] })
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(git(f.root, 'cat-file', '-t', sha).trim(), 'commit')
+  assert.ok(readFileSync(join(f.root, '.git', 'FETCH_HEAD'), 'utf8').startsWith(`${sha}\t`))
+  assert.equal(git(f.root, 'for-each-ref', '--format=%(refname) %(objectname)'), refs)
+  assert.deepEqual(readFileSync(join(f.root, '.git', 'HEAD')), head)
+  assert.deepEqual(readFileSync(join(f.root, '.git', 'index')), index)
+  assert.equal(git(f.root, 'status', '--porcelain=v1'), status)
+  assert.equal(readFileSync(join(f.root, 'local.txt'), 'utf8'), 'local unstaged change')
+  assert.equal(existsSync(join(f.root, 'remote.txt')), false)
 })
 
 test('setup migrates an explicit path, preserves custom data and instructions, then reuses it', async t => {

@@ -40,12 +40,15 @@ function gitConfigNames(pattern: string): string[] {
 async function main() {
   const [repository, operation, ...args] = process.argv.slice(2)
   if (!repository || !operation || !args[0]) {
-    fail('Usage: run.ts OWNER/REPO gh|commit|push ARGS...')
+    fail('Usage: run.ts OWNER/REPO gh|commit|push|fetch ARGS...')
   }
   if (!/^(macklinu|fairfield-consulting)\/(?!\.{1,2}$)[A-Za-z0-9_.-]+$/.test(repository)) {
     fail('Unsupported target repository.')
   }
-  if (!['gh', 'commit', 'push'].includes(operation)) fail('Unsupported operation.')
+  if (!['gh', 'commit', 'push', 'fetch'].includes(operation)) fail('Unsupported operation.')
+  if (operation === 'fetch' && (args.length !== 1 || !/^[0-9a-f]{40}$/i.test(args[0]))) {
+    fail('Fetch requires exactly one full 40-character commit SHA and no options.')
+  }
 
   if (operation === 'commit') {
     if (args.some(arg => /^--(?:a|au|aut|auth|autho|author)(?:=|$)/.test(arg))) {
@@ -100,7 +103,7 @@ async function main() {
       fail('Push destination, transport and submodule overrides are not allowed.')
     }
     if (gitConfigNames('^url\\..*\\.(insteadof|pushinsteadof)$').length) {
-      fail('Remove Git URL rewrites before a machine push.')
+      fail('Remove Git URL rewrites before a machine push or fetch.')
     }
     // URL-specific helpers and headers can override the generic Git settings.
     for (const key of new Set(['credential.helper', ...gitConfigNames('^credential(\\..*)?\\.helper$')])) {
@@ -109,7 +112,7 @@ async function main() {
     for (const key of new Set(['http.extraheader', ...gitConfigNames('^http(\\..*)?\\.extraheader$')])) {
       gitOptions.push('-c', `${key}=`)
     }
-    gitOptions.push('-c', 'push.recurseSubmodules=no')
+    if (operation === 'push') gitOptions.push('-c', 'push.recurseSubmodules=no')
   }
   if (process.env.NODE_TLS_REJECT_UNAUTHORIZED === '0') fail('TLS certificate verification must be enabled.')
 
@@ -213,9 +216,13 @@ async function main() {
   }
 
   const childEnvironment = { ...environment, GH_TOKEN: token, GH_REPO: repository }
+  const gitCommand = operation === 'fetch'
+    ? ['fetch', '--no-all', '--no-tags', '--no-prune', '--no-prune-tags', '--no-recurse-submodules',
+       '--no-auto-maintenance', '--no-write-commit-graph', '--refmap=']
+    : ['push']
   const result = operation === 'gh'
     ? spawnSync('gh', args, { env: childEnvironment, stdio: 'inherit' })
-    : spawnSync('git', [...gitOptions, 'push', `https://github.com/${repository}.git`, ...args], {
+    : spawnSync('git', [...gitOptions, ...gitCommand, `https://github.com/${repository}.git`, ...args], {
         env: { ...childEnvironment, GIT_TERMINAL_PROMPT: '0', GIT_ASKPASS: '', SSH_ASKPASS: '', GIT_TRACE_REDACT: '1' },
         stdio: 'inherit',
       })
