@@ -6,9 +6,9 @@ compatibility: Requires GitHub CLI (`gh`) to create or edit PRs and upload visua
 
 # PR description
 
-Write a PR body that tells reviewers what changed and why. Do not restate the issue or narrate the diff. Keep the whole body concise; link long technical details instead of copying them.
+Load `clear-voice` before writing or editing a PR body, and use its checker before publishing. Give reviewers the outcome, the reason, and context they cannot get from reading the code. Do not narrate the diff or repeat the issue.
 
-Distinguish implementation assumptions from stated requirements and unverified release prerequisites.
+Keep details only when they affect review or release, such as a tradeoff, migration, or known limitation. Distinguish material assumptions from requirements and unverified prerequisites. Link longer explanations instead of copying them into the body.
 
 ## Workflow
 
@@ -18,40 +18,53 @@ Before any GitHub command, including help, read repository instructions and sele
    - Keep its headings, fields, and checkboxes.
    - Fill each applicable field briefly and set checkboxes accurately. Do not remove template fields or leave applicable fields empty.
    - Template requirements take priority over the default format.
-2. Without a template, use one `## Summary` section with brief bullets about the result.
-3. If a visual explains the change better than prose, load `show-me` to choose the smallest useful format.
-   - Do not repeat the same point in prose and a visual or restate the issue or diff.
-   - Use GitHub-supported Markdown. Follow GitHub's [code block guide](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/creating-and-highlighting-code-blocks) and [diagram guide](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/creating-diagrams) for rendering limits. Do not assume renderer-specific output works on GitHub.
-   - Local HTML files and artifact paths are not usable PR evidence. Explanatory illustrations do not replace the visual evidence required below.
-4. Do not list commands, test runs, dependency installs, or routine setup.
+1. Read the full PR diff against its actual target branch, including for stacked PRs. When updating a body, describe the current PR as a whole, not the latest commit or agent session.
+1. Without a template, default to one short paragraph under `## Summary`. Use bullets for separate points, not as a requirement. Add sections only when they help the reviewer.
+1. Choose visuals using the guidance below. Do not repeat the same explanation in prose and a visual.
+1. Do not list commands, test runs, dependency installs, or routine setup.
    - When CI runs, let it report testing. Do not add a testing section unless the template requires it.
    - If no CI exists and verification needs a note, write one outcome sentence without command history.
-5. Before creating or updating the PR, verify facts, concise wording, and valid Markdown.
+   - Mention a material verification gap even when CI exists.
+1. Before creating or updating the PR, verify facts and Markdown, and run the `clear-voice` checker on the body.
 
-## Visual changes
+## Choose useful visuals
 
-For every PR that changes a user-visible surface, include before-and-after evidence in a Markdown table.
+For a visible UI change, include captured evidence in the format that helps review. Before-and-after tables are a useful option, not a requirement.
 
-1. Capture the same state before and after the change, with useful alt text.
-2. Prepare both image references for the attachment step. Use this structure unless the template requires another location:
+- For a change to an existing screen, use a before-and-after table when the comparison explains the result.
+- For a new UI, show its meaningful states, such as loading, empty, populated, error, or success. Include all distinct states needed to review the feature, not every combination of inputs or near-identical screenshots.
+- For a focused addition, one labeled screenshot may be enough. Use a short recording when motion or interaction matters more than a still image.
+- For a change with no visual effect, omit screenshots. Add a diagram only when it explains something the reviewer needs to understand.
 
-   ```markdown
-   | Before                                       | After                                                        |
-   | -------------------------------------------- | ------------------------------------------------------------ |
-   | ![Before: empty profile state](./before.png) | ![After: empty profile state with retry action](./after.png) |
-   ```
+When an explanatory visual helps, load `show-me` and choose the smallest useful format. Use a flowchart for behavior or data flow, or render a focused HTML illustration to PNG for a layout or concept that needs it. Label illustrations as illustrations; they do not replace captures of the real UI.
 
-3. Immediately before creating or editing the PR, read the applicable current `gh pr create --help` or `gh pr edit --help` through the selected identity's workflow.
-4. Use only the attachment behavior documented by that `gh` version. For machine publication, follow `macklinu-machine`'s image-upload policy and operation order. Otherwise, attach files in the same `gh pr create` or `gh pr edit` command when it supports uploads, so GitHub can replace local references with uploaded asset URLs.
-5. Re-read the created or updated PR body even if the attachment command exits non-zero: partial uploads can still create or update the PR. Confirm that the table shows both images, has useful alt text, and links to uploaded assets instead of local paths. Report incomplete evidence; do not repeat the command without checking the resulting PR.
+Use GitHub-supported Markdown and Mermaid. Follow GitHub's [code block guide](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/creating-and-highlighting-code-blocks) and [diagram guide](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/creating-diagrams) for rendering limits. Upload rendered images rather than relying on local HTML files, artifact paths, or renderer-specific output.
 
-Never fabricate visual evidence. Omit the table when the change has no visual effect.
+Keep visuals next to the context they support, with useful alt text and short state labels. Use a compact table or grid for related captures, and link extra detail rather than making the body a screenshot gallery.
+
+## Capture the PR comparison
+
+Use these steps when you choose a before-and-after comparison.
+
+1. Resolve the current target branch and PR head commit. For "before," use their merge-base commit, which defines GitHub's three-dot PR diff. For a stacked PR, use its actual target branch, not an assumed `main`.
+1. Capture "before" from that base commit and "after" from the PR head. Do not use the previous PR commit, `HEAD^`, or the start of the current agent session as the baseline.
+1. Match the viewport, data, and UI state when comparing images. Capture each revision without disturbing the user's working changes, and record the commit SHAs with the captures.
+1. When the PR changes, check that attached evidence still matches its current comparison. Replace stale captures rather than appending a history of revisions.
+
+Never fabricate evidence or present a mockup as a running UI. If the base cannot run or a capture is missing, report the gap instead of substituting another commit. New UI states do not need an invented "before."
+
+## Publish attachments
+
+1. Prepare the selected captures or rendered illustrations for upload.
+1. Immediately before creating or editing the PR, read the applicable current `gh pr create --help` or `gh pr edit --help` through the selected identity's workflow.
+1. Use only the attachment behavior documented by that `gh` version. For machine publication, follow `macklinu-machine`'s image-upload policy and operation order. Otherwise, attach files in the same `gh pr create` or `gh pr edit` command when it supports uploads, so GitHub can replace local references with uploaded asset URLs.
+1. Re-read the created or updated PR body even if the attachment command exits non-zero, since partial uploads can still create or update the PR. Confirm that every intended visual renders, has useful alt text, and links to an uploaded asset instead of a local path.
+1. Report incomplete evidence. Do not repeat a failed command without checking the resulting PR.
 
 ## Default body example
 
 ```markdown
 ## Summary
 
-- Return a retry action when the profile request has no result.
-- Keep the previous loading and error behavior unchanged.
+Let users retry a failed profile request without leaving the page. Previously, recovery required a full reload.
 ```
