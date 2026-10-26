@@ -1,6 +1,6 @@
 ---
 name: macklinu-machine
-description: Use the macklinu-machine GitHub App for PR/API commands, commits, and HTTPS pushes in macklinu or fairfield-consulting repositories when asked to publish as the machine or when AGENTS.md requires it. Existing personal authentication is allowed for routine Git reads, gh stack, and the image-upload exception below.
+description: Use the macklinu-machine GitHub App for GitHub CLI/API commands and the bot identity for commits in macklinu or fairfield-consulting repositories when asked to publish as the machine or when AGENTS.md requires it. Normal Git reads and pushes use existing repository authentication; gh stack and image uploads have narrow personal-authentication exceptions.
 compatibility: Requires macOS or Linux, Node.js 22+, pnpm 10.2+ (pnpx), and Git; machine publication also needs gh and a local GitHub App RSA PEM.
 ---
 
@@ -15,26 +15,33 @@ pnpx --allow-build=esbuild tsx@4.23.15 /absolute/path/to/macklinu-machine/script
 | Operation | Prerequisites |
 | --- | --- |
 | `commit` | Git; no machine configuration, key, or token. |
-| `gh pr`, `gh api`, `push` | Private local configuration, a readable App RSA PEM, and `gh`. |
+| Normal Git reads and pushes | Git and the repository's existing authentication; no machine runner or App configuration. |
+| `gh pr`, `gh api`, explicitly requested machine `push` | Private local configuration, a readable App RSA PEM, and `gh`. |
 | `gh stack` | The official `github/gh-stack` extension and the existing active, valid `macklinu` login on `github.com`; no App configuration, key, or token. |
 
-## Routine Git reads
+## Normal Git operations
 
-Use normal `git clone`, `git fetch`, and `git pull` with the repository's existing authentication, including configured personal credentials. If requested, `gh repo clone` may use the existing GitHub CLI authentication. These reads do not require the machine runner or App configuration unless repository instructions explicitly require a particular identity for reads.
+Use normal Git commands with the repository's existing authentication, including configured personal credentials. This includes local inspection (`git status`, `git log`, `git show`, `git remote`, and `git branch`), remote listing (`git ls-remote`), `git clone`, `git fetch`, `git pull`, and `git push`.
+
+These commands do not require the machine runner or App configuration unless repository instructions explicitly require a particular identity. Use `git clone` rather than a GitHub CLI command for cloning.
 
 For a requested update to main, check local changes, then run `git pull --ff-only origin main`. Try the standard command before treating authentication as blocked. Escalate only an observed failure, a concrete risk to local work, or an explicit instruction that prevents the operation.
 
-A missing runner operation is not a Git limitation. Do not extend the runner, alter authentication configuration, or ask the user to choose an authentication path merely because the runner lacks a read operation.
+For an authorized push, confirm the intended remote and branch, then run `git push origin HEAD:refs/heads/BRANCH`. Push only the approved scope; normal Git authentication does not authorize pushing to main, force-pushing, or deleting refs.
+
+A failed optional machine push does not block an authorized normal Git push with existing credentials. Do not change credentials or authentication configuration to make it work.
+
+A missing runner operation is not a Git limitation. Do not extend the runner or ask the user to choose an authentication path for normal Git operations.
 
 ## Commands
 
 - Stage only intended files, then use `commit -m 'Describe the change'`. Do not override `--author`. Include `--reset-author` when amending or reusing a commit message. Verify both author and committer as `macklinu-machine[bot] <340227694+macklinu-machine[bot]@users.noreply.github.com>`.
 - Use `gh pr` with its normal subcommand and arguments, such as `gh pr view 9`. For repository REST calls, put the endpoint immediately after `api`, such as `gh api repos/{owner}/{repo}/pulls`.
-- Use `push HEAD:refs/heads/BRANCH` to update the intended branch at `https://github.com/OWNER/REPO.git`. Refs and normal push flags follow the operation. Do not change the destination, transport, or submodule behavior. Remove Git URL rewrites before pushing.
+- Only when machine-authenticated Git transport is explicitly requested, use the runner's `push HEAD:refs/heads/BRANCH` operation at `https://github.com/OWNER/REPO.git`. Do not change its destination, transport, or submodule behavior. Remove Git URL rewrites before using the runner's push operation.
 
 For runner operations, use the same repository throughout. No cross-repository URLs/endpoints, repository/host overrides, replacement authentication headers, or verbose HTTP logging. Auth commands, other extensions, aliases, and other `gh` commands remain blocked by the runner.
 
-Stop on machine authentication failure. Routine Git reads do not authorize retrying a failed machine command with personal credentials; only the exceptions below permit personal publication.
+Use the machine runner for PR creation, review requests, review replies, PR listing and lookup, and other GitHub CLI/API commands, subject to the existing exceptions below. Stop the affected GitHub operation on machine authentication failure; do not retry it with personal credentials. Normal Git reads and pushes remain separate from GitHub CLI/API authentication.
 
 ## Stack exception
 
@@ -53,13 +60,15 @@ To link existing PRs, pass full `https://github.com/OWNER/REPO/pull/NUMBER` URLs
 
 Stack metadata and recovery journals live in Git's common directory and are shared across linked worktrees. Coordinate mutations across the clone; do not treat a fresh worktree as an isolated stack catalog. Use deterministic tests, not live stack mutations, to verify this runner.
 
-Keep commits on the runner's `commit` path rather than stack commit shortcuts. Pushes and PR changes performed by a requested stack command use the personal login; standalone pushes, PR creation, review requests, review replies, and other GitHub commands still use machine authentication.
+Keep commits on the runner's `commit` path rather than stack commit shortcuts. Pushes and PR changes performed by a requested stack command use the personal login. Outside that exception, PR creation, review requests, review replies, and other GitHub commands use machine authentication; standalone Git pushes use existing repository authentication.
 
-Do not switch logins, output/copy/store tokens, change global authentication state, or fall back to personal authentication for a failed machine command. Stop if account verification or the stack command fails.
+Do not switch logins, output/copy/store tokens, change global authentication state, or fall back to personal authentication for a failed GitHub CLI/API command. Stop if account verification or the stack command fails.
 
 ## Image-upload exception
 
-Outside the stack exception, keep commits, pushes, PR creation, review replies, review requests, and all other publication machine-authenticated. Only image attachment uploads unsupported by CLI App authentication may use the existing active `macklinu` login on `github.com`. Accept a reported `unsupported authentication type` error without repeating the failed upload.
+Outside the stack exception, keep commits, PR creation, review replies, review requests, and other GitHub CLI/API operations machine-authenticated. Normal Git reads and pushes use existing repository authentication.
+
+Only image attachment uploads unsupported by CLI App authentication may use the existing active `macklinu` login on `github.com`. Accept a reported `unsupported authentication type` error without repeating the failed upload.
 
 - Follow installed CLI help for syntax. Prefer a separate user-authenticated image upload and machine-authenticated URL insertion only if help documents standalone attachment uploads. Otherwise, create the PR through the runner without attachments, verify its machine author, then allow only an image-only body edit on that existing PR through the user login. Preserve all non-image content; change no other PR fields.
 - For the account check and upload/edit, use direct `gh` children, not the runner. Remove inherited `GH_TOKEN`, `GITHUB_TOKEN`, `GH_ENTERPRISE_TOKEN`, `GITHUB_ENTERPRISE_TOKEN`, `GH_DEBUG`, and `DEBUG` only from those children; target the same repository and host explicitly. Follow `gh auth status --help` to verify the active login is `macklinu` on `github.com` and authentication is valid. Output only host, login, and status fields, never tokens.
@@ -82,7 +91,9 @@ App and installation IDs are public identifiers, not credentials. The PEM is a c
 
 Machine publication reads the configured PEM, signs an App JWT in memory, and requests a fresh token limited to the named repository. The child receives `GH_TOKEN`, `GH_REPO`, and `GH_HOST=github.com`; inherited personal tokens and Git/gh tracing are removed.
 
-Pushes clear generic and URL-specific credential helpers and extra headers, then use `gh auth git-credential` with that token. Interactive fallback and submodule pushes are disabled. Failures return fixed errors; downstream exit status is preserved.
+The runner's optional machine push operation clears generic and URL-specific credential helpers and extra headers, then uses `gh auth git-credential` with that token. Interactive fallback and submodule pushes are disabled for that operation.
+
+Failures return fixed errors; downstream exit status is preserved. Normal `git push` does not use this path.
 
 No key copy, token file/cache, retry, or permanent Git change is created. The PEM buffer is cleared after signing, but JavaScript/crypto copies can remain.
 

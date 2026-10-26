@@ -9,7 +9,7 @@ compatibility: Requires macklinu-machine and a writable same-repository PR head.
 
 Invocation: `/machine-pr-create [PR context]`; context may specify purpose, base, or draft intent.
 
-Read repository instructions and load `macklinu-machine`. Use its runner for every GitHub operation, commit, and push, including linked-guide commands; follow it for identity checks.
+Read repository instructions and load `macklinu-machine`. Use its runner for every GitHub operation and commit, including linked-guide commands; follow it for identity checks. Use normal `git push` with the repository's existing authentication to publish the intended branch.
 
 ## 1. Publish the intended work
 
