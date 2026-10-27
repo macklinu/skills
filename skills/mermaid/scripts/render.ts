@@ -12,9 +12,9 @@ type RenderInput = {
   readonly width: Option.Option<number>;
 };
 
-const userError = (message: string) => new CliError.UserError({
-  cause: new Error(message),
-  userMessage: message,
+const userError = (userMessage: string) => new CliError.UserError({
+  cause: userMessage,
+  userMessage,
 });
 
 const renderDiagram = Effect.fn("Mermaid.render")(function* ({
@@ -38,35 +38,31 @@ const renderDiagram = Effect.fn("Mermaid.render")(function* ({
   const result = yield* renderMermaidToSvg(source, { theme });
   yield* fs.makeDirectory(path.dirname(output), { recursive: true });
 
+  const outputFormat = format === ".svg" ? "svg" : "png";
+  let dimensions: { readonly width: number; readonly height: number };
+
   if (format === ".svg") {
     yield* fs.writeFileString(output, result.svg);
-    yield* Console.log(JSON.stringify({
-      output,
-      format: format.slice(1),
-      theme,
-      type: result.type,
-      width: result.width,
-      height: result.height,
+    dimensions = { width: result.width, height: result.height };
+  } else {
+    const image = yield* Effect.try(() => rasterizeSvg(result.svg, {
+      background: result.background,
+      width: Option.getOrUndefined(width),
     }));
-    return;
+    yield* fs.writeFile(output, image.png);
+    dimensions = { width: image.width, height: image.height };
   }
 
-  const image = yield* Effect.try(() => rasterizeSvg(result.svg, {
-    background: result.background,
-    width: Option.getOrUndefined(width),
-  }));
-  yield* fs.writeFile(output, image.png);
   yield* Console.log(JSON.stringify({
     output,
-    format: format.slice(1),
+    format: outputFormat,
     theme,
     type: result.type,
-    width: image.width,
-    height: image.height,
+    ...dimensions,
   }));
 });
 
-export const renderCommand = Command.make("render", {
+const renderCommand = Command.make("render", {
   input: Argument.Path("input", { pathType: "file", mustExist: true }),
   output: Flag.String("output").pipe(
     Flag.withAlias("o"),
