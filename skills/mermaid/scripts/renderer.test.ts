@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { layer as nodeServicesLayer } from "@effect/platform-node/NodeServices";
+import { Effect } from "effect";
 import { rasterizeSvg, renderMermaidToSvg } from "./renderer.ts";
 
 const source = `flowchart LR
@@ -8,7 +10,9 @@ const source = `flowchart LR
   B -->|No| D[Show validation error]`;
 
 test("renders a standalone light SVG with concrete Pele colors", async () => {
-  const result = await renderMermaidToSvg(source);
+  const result = await Effect.runPromise(
+    renderMermaidToSvg(source).pipe(Effect.provide(nodeServicesLayer)),
+  );
 
   assert.equal(result.type, "flowchart");
   assert.match(result.svg, /Web application/);
@@ -19,7 +23,9 @@ test("renders a standalone light SVG with concrete Pele colors", async () => {
 });
 
 test("renders the dark theme into standalone SVG and PNG output", async () => {
-  const result = await renderMermaidToSvg(source, { theme: "dark" });
+  const result = await Effect.runPromise(
+    renderMermaidToSvg(source, { theme: "dark" }).pipe(Effect.provide(nodeServicesLayer)),
+  );
   const image = rasterizeSvg(result.svg, { background: result.background });
 
   assert.match(result.svg, /#1c1b1a/);
@@ -29,7 +35,9 @@ test("renders the dark theme into standalone SVG and PNG output", async () => {
 });
 
 test("scales PNG output to the requested width", async () => {
-  const result = await renderMermaidToSvg(source);
+  const result = await Effect.runPromise(
+    renderMermaidToSvg(source).pipe(Effect.provide(nodeServicesLayer)),
+  );
   const image = rasterizeSvg(result.svg, { background: result.background, width: 800 });
 
   assert.equal(image.width, 800);

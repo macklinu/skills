@@ -1,5 +1,4 @@
-import { readFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
+import { Effect, FileSystem, Path } from "effect";
 import { resolveCustomProperties } from "./css-variables.ts";
 
 export type ThemeName = "light" | "dark";
@@ -24,7 +23,10 @@ export function parseTheme(name: ThemeName, css: string): Theme {
   return { name, background, variables };
 }
 
-export async function loadTheme(name: ThemeName): Promise<Theme> {
-  const themePath = fileURLToPath(new URL(`../themes/${name}.css`, import.meta.url));
-  return parseTheme(name, await readFile(themePath, "utf8"));
-}
+export const loadTheme = Effect.fn("Theme.load")(function* (name: ThemeName) {
+  const fs = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
+  const themePath = yield* path.fromFileUrl(new URL(`../themes/${name}.css`, import.meta.url));
+  const css = yield* fs.readFileString(themePath);
+  return yield* Effect.try(() => parseTheme(name, css));
+});

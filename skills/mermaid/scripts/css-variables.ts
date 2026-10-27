@@ -1,4 +1,4 @@
-import { DOMParser, XMLSerializer } from "@xmldom/xmldom";
+import { DOMParser, XMLSerializer, type Element } from "@xmldom/xmldom";
 
 type Declaration = {
   property: string;

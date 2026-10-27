@@ -6,8 +6,14 @@ export const paperMonoFontFiles = [
   fileURLToPath(new URL("../fonts/PaperMono-Bold.ttf", import.meta.url)),
 ];
 
-const regular = fontkit.openSync(paperMonoFontFiles[0]);
-const bold = fontkit.openSync(paperMonoFontFiles[1]);
+function openFont(path: string): fontkit.Font {
+  const font = fontkit.openSync(path);
+  if (!("layout" in font)) throw new Error(`Expected a single font file: ${path}`);
+  return font;
+}
+
+const regular = openFont(paperMonoFontFiles[0]);
+const bold = openFont(paperMonoFontFiles[1]);
 
 export const paperMonoMeasurer = {
   width(text: string, size: number, style: number): number {

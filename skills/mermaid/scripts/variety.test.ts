@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { layer as nodeServicesLayer } from "@effect/platform-node/NodeServices";
+import { Effect } from "effect";
 import test from "node:test";
 import { rasterizeSvg, renderMermaidToSvg } from "./renderer.ts";
 
@@ -21,7 +23,9 @@ for (const [index, fixture] of cases.entries()) {
       "utf8",
     );
     const theme = index % 2 === 0 ? "light" : "dark";
-    const result = await renderMermaidToSvg(source, { theme });
+    const result = await Effect.runPromise(
+      renderMermaidToSvg(source, { theme }).pipe(Effect.provide(nodeServicesLayer)),
+    );
     const image = rasterizeSvg(result.svg, { background: result.background, width: 640 });
 
     assert.equal(result.type, fixture.type);

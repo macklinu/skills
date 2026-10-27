@@ -3,6 +3,7 @@ import { render } from "pele";
 import { resolveCssVariables } from "./css-variables.ts";
 import { paperMonoFontFiles, paperMonoMeasurer } from "./fonts.ts";
 import { loadTheme, type ThemeName } from "./themes.ts";
+import { Effect } from "effect";
 
 export type MermaidSvg = {
   svg: string;
@@ -18,29 +19,31 @@ export type RasterImage = {
   height: number;
 };
 
-export async function renderMermaidToSvg(
+export const renderMermaidToSvg = Effect.fn("Mermaid.toSvg")(function* (
   source: string,
   options: { theme?: ThemeName } = {},
-): Promise<MermaidSvg> {
-  const theme = await loadTheme(options.theme ?? "light");
-  const result = render(source, {
-    autoDirection: false,
-    fontFamily: "Paper Mono",
-    fontFamilyMono: "Paper Mono",
-    measurer: paperMonoMeasurer,
-    monospace: ["attributes", "files", "members", "messages"],
-    padding: 24,
-    responsive: false,
-  });
+) {
+  const theme = yield* loadTheme(options.theme ?? "light");
+  return yield* Effect.try(() => {
+    const result = render(source, {
+      autoDirection: false,
+      fontFamily: "Paper Mono",
+      fontFamilyMono: "Paper Mono",
+      measurer: paperMonoMeasurer,
+      monospace: ["attributes", "files", "members", "messages"],
+      padding: 24,
+      responsive: false,
+    });
 
-  return {
-    svg: resolveCssVariables(result.svg, theme.variables, theme.background),
-    type: result.type,
-    width: result.width,
-    height: result.height,
-    background: theme.background,
-  };
-}
+    return {
+      svg: resolveCssVariables(result.svg, theme.variables, theme.background),
+      type: result.type,
+      width: result.width,
+      height: result.height,
+      background: theme.background,
+    };
+  });
+});
 
 export function rasterizeSvg(
   svg: string,
