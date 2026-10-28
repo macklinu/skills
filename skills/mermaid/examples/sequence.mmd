@@ -1,0 +1,18 @@
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Web application
+  participant API
+  participant DB as Orders database
+  User->>UI: Submit order
+  UI->>API: POST /orders
+  API->>DB: Insert order
+  alt Order accepted
+    DB-->>API: Order identifier
+    API-->>UI: 201 Created
+    UI-->>User: Show confirmation
+  else Order rejected
+    DB-->>API: Validation error
+    API-->>UI: 422 Unprocessable Content
+    UI-->>User: Show validation message
+  end

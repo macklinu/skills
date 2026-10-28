@@ -1,6 +1,7 @@
 # Skills
 
 - [effect](skills/effect/) — Build production TypeScript applications with Effect v4.
+- [mermaid](skills/mermaid/) - Create, validate, and render Mermaid diagrams as SVG or PNG with Pele, resvg, and bundled themes.
 - [macklinu-code-style](skills/macklinu-code-style/) — Apply focused design, API, testing, and review conventions to code changes.
 - [setup-tooling](skills/setup-tooling/) — Create a pnpm 12/Turborepo monorepo or add OxC, Lefthook, and local skills to an existing repo.
 - [pr-description](skills/pr-description/) — Create concise GitHub pull request descriptions with template and visual-evidence support.
