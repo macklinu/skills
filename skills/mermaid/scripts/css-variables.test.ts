@@ -67,3 +67,11 @@ test("rejects circular variable references", () => {
   const error = Effect.runSync(Effect.flip(resolveCssVariables(source, {})));
   assert.match(error.message, /Circular CSS variable reference/);
 });
+
+test("returns unclosed CSS functions as tagged errors", () => {
+  const source = `<svg xmlns="http://www.w3.org/2000/svg"><rect fill="var(--missing" /></svg>`;
+  const error = Effect.runSync(Effect.flip(resolveCssVariables(source, {})));
+
+  assert.equal(error._tag, "CssResolutionError");
+  assert.match(error.message, /Unclosed CSS function/);
+});

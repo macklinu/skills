@@ -6,11 +6,11 @@ import { rasterizeSvg } from "./renderer.ts";
 import { parseTheme } from "./themes.ts";
 
 test("resolves aliased theme backgrounds in SVG and PNG rendering", () => {
-  const theme = parseTheme("light", `.pele {
+  const theme = Effect.runSync(parseTheme("light", `.pele {
     --base-bg: #fafafa;
     --pele-bg: var(--base-bg);
     --pele-fg: #1f1f1f;
-  }`);
+  }`));
   const svg = Effect.runSync(resolveCssVariables(
     `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20">
       <text fill="var(--pele-fg)">A</text>
