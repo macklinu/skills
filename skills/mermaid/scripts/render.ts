@@ -12,11 +12,6 @@ type RenderInput = {
   readonly width: Option.Option<number>;
 };
 
-const userError = (userMessage: string) => new CliError.UserError({
-  cause: userMessage,
-  userMessage,
-});
-
 const renderDiagram = Effect.fn("Mermaid.render")(function* ({
   input,
   output,
@@ -28,10 +23,10 @@ const renderDiagram = Effect.fn("Mermaid.render")(function* ({
   const format = path.extname(output).toLowerCase();
 
   if (format !== ".svg" && format !== ".png") {
-    return yield* Effect.fail(userError("--output must end in .svg or .png."));
+    return yield* new CliError.UserError({ cause: "--output must end in .svg or .png." });
   }
   if (format === ".svg" && Option.isSome(width)) {
-    return yield* Effect.fail(userError("--width applies only to PNG output."));
+    return yield* new CliError.UserError({ cause: "--width applies only to PNG output." });
   }
 
   const source = yield* fs.readFileString(input);

@@ -1,4 +1,5 @@
 import { DOMParser, XMLSerializer, type Element } from "@xmldom/xmldom";
+import { Effect } from "effect";
 
 type Declaration = {
   property: string;
@@ -154,21 +155,26 @@ export function resolveCssVariables(
   source: string,
   themeVariables: Record<string, string>,
   background?: string,
-): string {
-  const document = new DOMParser().parseFromString(source, "image/svg+xml");
-  const root = document.documentElement;
-  if (!root || root.tagName !== "svg") throw new Error("Input does not contain an SVG root element.");
+) {
+  return Effect.try({
+    try: () => {
+      const document = new DOMParser().parseFromString(source, "image/svg+xml");
+      const root = document.documentElement;
+      if (!root || root.tagName !== "svg") throw new Error("Input does not contain an SVG root element.");
 
-  resolveElement(root, themeVariables);
+      resolveElement(root, themeVariables);
 
-  if (background) {
-    const rectangle = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    rectangle.setAttribute("class", "pele-background");
-    rectangle.setAttribute("width", "100%");
-    rectangle.setAttribute("height", "100%");
-    rectangle.setAttribute("fill", background);
-    root.insertBefore(rectangle, root.firstChild);
-  }
+      if (background) {
+        const rectangle = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        rectangle.setAttribute("class", "pele-background");
+        rectangle.setAttribute("width", "100%");
+        rectangle.setAttribute("height", "100%");
+        rectangle.setAttribute("fill", background);
+        root.insertBefore(rectangle, root.firstChild);
+      }
 
-  return new XMLSerializer().serializeToString(document);
+      return new XMLSerializer().serializeToString(document);
+    },
+    catch: (error) => error instanceof Error ? error : new Error(String(error)),
+  });
 }

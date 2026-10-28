@@ -24,25 +24,24 @@ export const renderMermaidToSvg = Effect.fn("Mermaid.toSvg")(function* (
   options: { theme?: ThemeName } = {},
 ) {
   const theme = yield* loadTheme(options.theme ?? "light");
-  return yield* Effect.try(() => {
-    const result = render(source, {
-      autoDirection: false,
-      fontFamily: "Paper Mono",
-      fontFamilyMono: "Paper Mono",
-      measurer: paperMonoMeasurer,
-      monospace: ["attributes", "files", "members", "messages"],
-      padding: 24,
-      responsive: false,
-    });
+  const result = yield* Effect.try(() => render(source, {
+    autoDirection: false,
+    fontFamily: "Paper Mono",
+    fontFamilyMono: "Paper Mono",
+    measurer: paperMonoMeasurer,
+    monospace: ["attributes", "files", "members", "messages"],
+    padding: 24,
+    responsive: false,
+  }));
+  const svg = yield* resolveCssVariables(result.svg, theme.variables, theme.background);
 
-    return {
-      svg: resolveCssVariables(result.svg, theme.variables, theme.background),
-      type: result.type,
-      width: result.width,
-      height: result.height,
-      background: theme.background,
-    };
-  });
+  return {
+    svg,
+    type: result.type,
+    width: result.width,
+    height: result.height,
+    background: theme.background,
+  };
 });
 
 export function rasterizeSvg(

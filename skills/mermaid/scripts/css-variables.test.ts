@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { Effect } from "effect";
 import { resolveCssVariables } from "./css-variables.ts";
 
 test("resolves theme variables, aliases, and nested fallbacks", () => {
@@ -8,10 +9,10 @@ test("resolves theme variables, aliases, and nested fallbacks", () => {
     <text fill="var(--missing,var(--pele-fg,#000))">Label</text>
   </svg>`;
 
-  const result = resolveCssVariables(source, {
+  const result = Effect.runSync(resolveCssVariables(source, {
     "--pele-accent": "#4385be",
     "--pele-fg": "#cecdc3",
-  });
+  }));
 
   assert.match(result, /fill="#4385be"/);
   assert.match(result, /fill="#cecdc3"/);
@@ -25,7 +26,7 @@ test("inherits custom properties and honors local overrides", () => {
     <path id="after" fill="var(--tone)" />
   </svg>`;
 
-  const result = resolveCssVariables(source, {});
+  const result = Effect.runSync(resolveCssVariables(source, {}));
   const fills = [...result.matchAll(/id="(before|override|after)" fill="(#[0-9a-f]+)"/g)];
 
   assert.deepEqual(fills.map((match) => [match[1], match[2]]), [
@@ -40,7 +41,7 @@ test("resolves inherited aliases in their declaring scope", () => {
     <g style="--tone:#222222"><path id="child" fill="var(--alias)" /></g>
   </svg>`;
 
-  const result = resolveCssVariables(source, {});
+  const result = Effect.runSync(resolveCssVariables(source, {}));
   assert.match(result, /id="child" fill="#111111"/);
 });
 
@@ -49,18 +50,20 @@ test("resolves variables in embedded style elements", () => {
     <style>.node { fill: var(--pele-surface); }</style>
   </svg>`;
 
-  const result = resolveCssVariables(source, { "--pele-surface": "#f3f3f3" });
+  const result = Effect.runSync(resolveCssVariables(source, { "--pele-surface": "#f3f3f3" }));
   assert.match(result, /\.node \{ fill: #f3f3f3; \}/);
 });
 
 test("rejects unresolved variables instead of emitting invalid colors", () => {
   const source = `<svg xmlns="http://www.w3.org/2000/svg"><rect fill="var(--missing)" /></svg>`;
-  assert.throws(() => resolveCssVariables(source, {}), /Unresolved CSS variable "--missing"/);
+  const error = Effect.runSync(Effect.flip(resolveCssVariables(source, {})));
+  assert.match(error.message, /Unresolved CSS variable "--missing"/);
 });
 
 test("rejects circular variable references", () => {
   const source = `<svg xmlns="http://www.w3.org/2000/svg" style="--a:var(--b);--b:var(--a)">
     <rect fill="var(--a)" />
   </svg>`;
-  assert.throws(() => resolveCssVariables(source, {}), /Circular CSS variable reference/);
+  const error = Effect.runSync(Effect.flip(resolveCssVariables(source, {})));
+  assert.match(error.message, /Circular CSS variable reference/);
 });
