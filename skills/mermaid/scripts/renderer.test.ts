@@ -9,29 +9,28 @@ const source = `flowchart LR
   B -->|Yes| C[Store order]
   B -->|No| D[Show validation error]`;
 
-test("renders a standalone light SVG with concrete Pele colors", async () => {
+test("renders a standalone dark SVG and PNG by default", async () => {
   const result = await Effect.runPromise(
     renderMermaidToSvg(source).pipe(Effect.provide(nodeServicesLayer)),
   );
+  const image = rasterizeSvg(result.svg, { background: result.background });
 
   assert.equal(result.type, "flowchart");
   assert.match(result.svg, /Web application/);
   assert.match(result.svg, /Paper Mono/);
-  assert.match(result.svg, /#f3f3f3/);
-  assert.match(result.svg, /class="pele-background" width="100%" height="100%" fill="#ffffff"/);
+  assert.match(result.svg, /#1c1b1a/);
+  assert.match(result.svg, /class="pele-background" width="100%" height="100%" fill="#100f0f"/);
   assert.doesNotMatch(result.svg, /var\(/);
+  assert.deepEqual([...image.png.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
 });
 
-test("renders the dark theme into standalone SVG and PNG output", async () => {
+test("renders the light theme when requested", async () => {
   const result = await Effect.runPromise(
-    renderMermaidToSvg(source, { theme: "dark" }).pipe(Effect.provide(nodeServicesLayer)),
+    renderMermaidToSvg(source, { theme: "light" }).pipe(Effect.provide(nodeServicesLayer)),
   );
-  const image = rasterizeSvg(result.svg, { background: result.background });
 
-  assert.match(result.svg, /#1c1b1a/);
-  assert.match(result.svg, /fill="#100f0f"/);
-  assert.deepEqual([...image.png.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
-
+  assert.match(result.svg, /#f3f3f3/);
+  assert.match(result.svg, /fill="#ffffff"/);
 });
 
 test("scales PNG output to the requested width", async () => {

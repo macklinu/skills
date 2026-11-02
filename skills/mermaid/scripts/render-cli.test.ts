@@ -27,14 +27,14 @@ test("shows declarative CLI help", () => {
   assert.match(result.stdout, /--width integer/);
 });
 
-test("renders a PNG and preserves JSON output metadata", (context) => {
+test("defaults to a dark PNG and preserves JSON output metadata", (context) => {
   const directory = mkdtempSync(join(tmpdir(), "mermaid-cli-"));
   context.after(() => rmSync(directory, { recursive: true, force: true }));
   const output = join(directory, "nested", "diagram.png");
   const result = runCli([
     architecture,
     "--output", output,
-    "--theme", "dark",
+
     "--width", "800",
   ]);
 

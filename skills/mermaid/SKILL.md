@@ -24,6 +24,22 @@ Create the smallest diagram that answers the user's question.
 5. Render and inspect the actual image. Revise clipping, overlap, density, reading order, and unnecessary edges; split overloaded diagrams.
 6. Return the source and requested artifacts. Do not claim Pele output matches another host's Mermaid version or layout.
 
+## Style
+
+Default to dark. Use light only when requested or required by the destination.
+
+Keep most nodes neutral. Accent one focal node or small group when useful. Reserve red for errors.
+
+Use fixed-color `classDef` for flowchart accents. Pele selects contrasting label text:
+
+```mermaid
+classDef primary fill:#4385be,stroke:#4385be;
+class API primary
+```
+
+For flair, change one element at a time. Fixed colors ignore theme switches, so inspect the result.
+
+Keep backgrounds solid. Use decoration only when requested. Even faint graph-paper grids compete with connectors, labels, and sequence lifelines.
 ## Render
 
 Resolve this skill directory to an absolute path. On first use, install its local dependencies:
@@ -35,13 +51,13 @@ pnpm --dir /absolute/path/to/mermaid install --frozen-lockfile
 Pele renders Mermaid to SVG. The script resolves theme CSS variables to static values, writes SVG, and uses resvg for PNG:
 
 ```sh
+pnpm --dir /absolute/path/to/mermaid render input.mmd --output diagram.png
 pnpm --dir /absolute/path/to/mermaid render input.mmd --output diagram.svg --theme light
-pnpm --dir /absolute/path/to/mermaid render input.mmd --output diagram.png --theme dark
 ```
 
+- Default to dark output and PNG for sharing. Keep the `.mmd` source beside generated artifacts.
 - PNG defaults to twice the natural width.
 - For PNG only, `--width 1600` sets the final pixel width and scales height proportionally.
-- Default to PNG for sharing. Keep the `.mmd` source beside generated artifacts.
 
 Edit `themes/light.css` or `themes/dark.css` to change the theme.
 
