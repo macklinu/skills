@@ -65,7 +65,7 @@ const renderCommand = Command.make("render", {
   ),
   theme: Flag.Literals("theme", ["light", "dark"]).pipe(
     Flag.withAlias("t"),
-    Flag.withDefault("light"),
+    Flag.withDefault("dark"),
     Flag.withDescription("Color theme"),
   ),
   width: Flag.Int("width").pipe(

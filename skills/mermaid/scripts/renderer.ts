@@ -23,7 +23,7 @@ export const renderMermaidToSvg = Effect.fn("Mermaid.toSvg")(function* (
   source: string,
   options: { theme?: ThemeName } = {},
 ) {
-  const theme = yield* loadTheme(options.theme ?? "light");
+  const theme = yield* loadTheme(options.theme ?? "dark");
   const result = yield* Effect.try(() => render(source, {
     autoDirection: false,
     fontFamily: "Paper Mono",
