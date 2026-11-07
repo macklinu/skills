@@ -37,5 +37,6 @@ Use these defaults even when tooling does not enforce them.
 
 ## Documentation
 
+- Keep chat transcripts, issue discussions, and session notes out of code, comments, and documentation. Implement decisions in code first. Document enduring technical rationale when useful, not the conversation or who requested or agreed to it.
 - Explain rationale, constraints, intended behavior, and operations that code cannot express. Distinguish intended behavior from the current implementation.
 - Keep quick starts task-focused. Put temporary migration and review notes in pull requests or working notes.
