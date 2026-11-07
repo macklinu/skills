@@ -83,8 +83,11 @@ Guidance:
 - Default real implementations to `Layer.effect(Service, Effect.gen(...))`.
 - Use `Layer.effectContext(...)` when one acquisition intentionally supplies multiple services, especially first-class test stubs or one client backing several service tags.
 - Use `Layer.unwrap(...)` when config or runtime discovery chooses/builds the layer.
+- Layer memoization follows layer identity, not the service tag. Reuse named layer values. Nested `Effect.provide` calls reuse layers already built by an enclosing provide or runtime; independent sibling calls do not share newly built entries.
 - Use `Layer.fresh(...)` or `Effect.provide(layer, { local: true })` only when a test or operation needs isolated acquisition.
 - Use `Context.Reference` rarely, only for ambient/defaultable runtime references where a safe default is real.
+
+See the [v4 layer-memoization rules](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/migration/layer-memoization.md#L3-L13).
 
 ## Long-Lived Work
 
@@ -151,6 +154,7 @@ Guidance:
 - Keep the generator body focused on the core workflow.
 - Use transforms when the wrapper needs original arguments.
 - Do not build long clever pipelines; one or two transforms is usually enough.
+- Keep transforms as pure Effect composition. Each receives the previous transform's result plus the original arguments; return an Effect to retain the traced Effect boundary.
 - Do not use this for local branch-level handling inside the workflow.
 
 ## Operation Error Helpers

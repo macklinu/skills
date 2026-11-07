@@ -6,15 +6,17 @@ Prefer `effect/Cache` over a `Map` + timestamp + prune-loop cache when its keyed
 
 ## Core Rules
 
-- `Cache.make({ capacity, lookup, timeToLive })` caches per-key lookups with one fixed TTL for all entries.
-- `Cache.makeWith(lookup, { capacity, timeToLive(exit, key) })` computes TTL per entry from the lookup's `Exit` — the tool for "cache successes, not failures".
+- `Cache.make({ capacity, lookup, timeToLive })` caches per-key lookups with one fixed TTL for all entries. `timeToLive` is optional and defaults to no expiration; set it explicitly when staleness matters.
+- `Cache.makeWith(lookup, { capacity, timeToLive(exit, key) })` computes TTL per entry from the lookup's `Exit`, which lets you cache successes without retaining failures.
 - Concurrent `Cache.get` calls for the same missing key share one pending lookup while its entry remains in the cache; eviction or invalidation can allow another lookup. Do not add your own in-flight tracking when these semantics fit.
+- One interrupted waiter does not cancel a lookup that still has other waiters; the last waiter's departure interrupts and removes a pending lookup. Interrupted lookups are not cached. `Effect.cached` and `Effect.cachedWithTTL` follow the same ownership rule.
 - `capacity` is required and bounds the cache; stop writing manual prune/evict loops.
 - Return a zero TTL (`0` or `"0 millis"`) from `timeToLive` to avoid caching transient failures or degraded fallbacks. TTL does not change the lookup's success or failure for the caller. A short negative-cache TTL can be appropriate for stable failures such as not-found results.
+- TTL starts when the lookup completes. Fixed TTLs retain failures as well as successes unless the cause contains interruption.
 - `Cache.invalidate(cache, key)` / `Cache.refresh(cache, key)` handle explicit staleness; `Cache.has` checks without triggering a lookup.
-- Cache construction is effectful. Build the cache once in the owning layer/scope and share the handle; a cache built per call caches nothing.
-- For a single value (no key), use `Effect.cached(effect)` or `Effect.cachedWithTTL(effect, ttl)` instead of a one-key Cache.
-- For cached resources that need cleanup (connections, clients), use `ScopedCache`.
+- Cache construction is effectful. Build the cache once in the owning layer/scope and share the handle; a cache built per call caches nothing. Lookup services are required at construction by default; `requireServicesAt: "lookup"` leaves them required by lookup operations.
+- For a single value (no key), use `Effect.cached(effect)` or `Effect.cachedWithTTL(effect, ttl)`. The latter also accepts `(exit) => Duration.Input`, so `Effect.cachedWithTTL(effect, (exit) => Exit.isSuccess(exit) ? "1 minute" : 0)` skips failed results. Allocate the returned memoized effect once and reuse it.
+- For cached resources, construct `ScopedCache` in its owning scope. Entry scopes close on invalidation, eviction, or cache shutdown; expiration cleanup is lazy on access or scans. `ScopedCache.get` does not keep resources alive during use, so use it only when callers can tolerate that closure.
 
 ## Exit-Aware TTL (cache successes, skip degraded results)
 
@@ -39,10 +41,12 @@ This replaces a hand-rolled `Map<string, { value, expiresAtMs }>` plus prune log
 
 ## Expensive Client Acquisition Belongs In The Layer, Not The Lookup
 
-A cache cannot fix a lookup that pays a scoped acquisition per call, such as SDK client construction or authentication. Acquire clients once via the owning layer (`Layer.build` inside a `Layer.unwrap(Effect.gen(...))` composition, or a service dependency) so the cached lookup is a plain call:
+A cache reduces lookup calls, not the acquisition cost of a miss. If a lookup constructs a fresh client layer, or independently provides a layer not already built by an enclosing scope, each miss acquires and releases that client. In v4, nested `Effect.provide` calls can reuse the same layer object already built by an enclosing provide/runtime; separate sibling calls do not share new acquisitions.
+
+Prefer a service dependency or build the client once in the owning layer's scope:
 
 ```ts
-// Bad: every cache miss acquires a fresh client
+// Bad: this factory creates a fresh client layer for each cache miss
 const lookup = (id: string) =>
   getRecord(id).pipe(Effect.provide(apiClientLayer(options)))
 
@@ -51,6 +55,8 @@ const lookup = (id: string) =>
 const context = yield* Layer.build(apiClientLayer(options))
 const lookup = (id: string) => Context.get(context, ApiClient).getRecord(id)
 ```
+
+See [v4 layer memoization](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/migration/layer-memoization.md#L8-L13). Reuse requires the same layer object, not another call to an equivalent factory.
 
 ## Request Batching (`Effect.request` + `RequestResolver`)
 
@@ -71,6 +77,13 @@ Selection guide:
 
 - Do not hand-roll Map/TTL/prune caches, in-flight dedupe maps, or LRU logic when `Cache` fits.
 - Choose failure TTLs by semantics. Skip transient failures and degraded fallbacks by default; bounded negative caching can protect an upstream from repeated stable failures.
-- Do not build a cache inside the request handler or per call — hoist it to the owning layer.
+- Do not build a cache inside the request handler or per call. Hoist it to the owning layer.
 - Do not adopt `RequestResolver` batching for per-item REST endpoints just because "batching" sounds faster.
 - Do not put scoped client acquisition inside the cache lookup; acquire once in the layer.
+
+Sources:
+
+- [Cache constructors and service requirements](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/packages/effect/src/Cache.ts#L198-L318).
+- [Pending lookup ownership and TTL](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/packages/effect/src/Cache.ts#L430-L505).
+- [Exit-aware single-value TTL](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/packages/effect/src/Effect.ts#L7505-L7517).
+- [Scoped entry lifetime](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/packages/effect/src/ScopedCache.ts#L120-L158).
