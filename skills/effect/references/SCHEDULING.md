@@ -6,17 +6,16 @@ Use `Schedule` for retry, polling, pacing, and repeated background work instead 
 
 ## Core Rules
 
-- `Effect.retry(...)` retries typed failures; defects and interruptions are not retried.
+- `Effect.retry(...)` retries recoverable typed failures. Pure interruption and any cause containing a defect are not retried; a typed failure mixed with interruption can still be recovered.
 - `Effect.repeat(...)` repeats successful effects; failures stop repetition unless the pass handles them first.
 - The source effect runs once before the schedule is stepped.
 - `Schedule.recurs(3)` means three retries/repetitions after the initial run.
 - `Schedule.spaced(...)` waits after work completes.
-- `Schedule.fixed(...)` aligns executions to a cadence.
+- `Schedule.fixed(...)` aligns executions to a cadence. Work that overruns the interval can recur immediately; missed intervals are not replayed.
 - Use `Schedule.exponential(...)` or `Schedule.fibonacci(...)` for backoff.
 - Add `Schedule.jittered` to avoid synchronized retry storms.
 - Use `Schedule.recurs(...)` for a counter schedule or `Schedule.upTo({ times })` to bound a delay schedule.
-- Use `Schedule.tap(({ input }) => ...)` to log retry inputs.
-- Use `Schedule.tap(...)` when full schedule metadata matters.
+- Use `Schedule.tap(({ input, output, duration, attempt }) => ...)` to observe retry inputs and schedule metadata.
 - Use `Effect.retryOrElse(...)` when exhausted retries need a fallback/reporting effect.
 - Retry only at the narrowest boundary with proven idempotency.
 - Exhausted failures should remain visible unless the boundary has a truthful fallback.
@@ -38,7 +37,7 @@ const run = pass.pipe(
 )
 ```
 
-This shape logs and discards typed pass failures so the worker continues. Defect-only causes still reach supervision; `Effect.ignore` can discard a mixed cause that also contains a typed failure.
+This shape logs and discards recoverable typed pass failures so the worker continues. Causes containing defects still reach supervision, with typed failures converted to defects. `Effect.ignore` can discard a typed failure mixed with interruption, so do not use it where every interruption-containing cause must propagate.
 
 Use cause-level recovery only at supervision boundaries where the policy is truly "report non-interrupt failure and continue".
 
@@ -134,3 +133,9 @@ Use this for operation-level retries over typed provider errors. For Effect Http
 - Use `Effect.sleep(...)` inside production workflows only when sleeping itself is the domain behavior.
 - Avoid manual sleep loops; use `Effect.repeat(...)` with `Schedule` for recurring work.
 - In tests, use `TestClock` rather than real time. Read `TESTING.md`.
+
+Sources:
+
+- [Retry control flow](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/packages/effect/src/internal/schedule.ts#L49-L79).
+- [`Effect.ignore` failure precedence](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/packages/effect/src/Effect.ts#L4403-L4424).
+- [Schedule metadata and delay changes](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/packages/effect/src/Schedule.ts#L1082-L1113).

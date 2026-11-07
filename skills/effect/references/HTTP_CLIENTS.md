@@ -39,7 +39,9 @@ Useful APIs:
 - `HttpClient.filterStatusOk` / `HttpClientResponse.filterStatusOk` before decoding when non-2xx responses are failures.
 - `HttpClientResponse.schemaBodyJson(...)` for body-only decoding, `schemaJson(...)` for status/headers/body decoding, and `schemaNoBody(...)` for status/headers decoding.
 - `HttpClient.retryTransient(...)` for common transient HTTP failures.
+- `HttpClient.timeout(...)` for a client-level response timeout. A plain transport completes when headers arrive; put a timeout around the full adapter effect when body reading and decoding must share the deadline.
 - `HttpClient.withRateLimiter(...)` for proactive pacing and learning from rate-limit headers. It requires a `RateLimiter` plus initial window, limit, and key options; it adds `RateLimiterError` to the error channel. Automatic `429` retries are unlimited by default; set `times` to bound them, or `0` to disable them.
+- HTTP client failures use the outer `HttpClientError` tag; inspect `error.reason._tag` for `TransportError`, `StatusCodeError`, or `DecodeError`. Do not use old `RequestError` / `ResponseError` tags. Response schema validation can also fail with `SchemaError`.
 
 ## Retry And Rate Limits
 
@@ -53,6 +55,12 @@ Use `HttpClient.retryTransient(...)` for common transient HTTP failures:
 - `502`
 - `503`
 - `504`
+
+Set a retry bound and a pacing schedule, for example `HttpClient.retryTransient({ times: 3, schedule: Schedule.exponential("200 millis") })`. The default schedule has no backoff, and retries are unbounded without `times` or a finite schedule. `Retry-After` sets a minimum delay.
+
+The default `retryOn` is `"errors-and-responses"`; the other modes are `"errors-only"` and `"response-only"`.
+
+Retry transient responses before decoding their success bodies. Client retry does not cover body reads or schema decoding performed after `client.get(...)` returns. Do not assume retry makes a request body replayable or an operation idempotent.
 
 Use `HttpClient.withRateLimiter(...)` when the client should proactively pace requests and learn from rate-limit / `Retry-After` headers.
 
@@ -99,3 +107,8 @@ Guidance:
 - Decode unknown response bodies with Schema at the boundary.
 - Preserve provider evidence needed for diagnosis, but redact secrets and private payloads.
 - Apply retry only for idempotent operations.
+
+## Sources
+
+- [HTTP retry, timeout, and rate-limiter contracts](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/packages/effect/src/http/HttpClient.ts#L947-L1252).
+- [HTTP client error wrapper and reasons](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/packages/effect/src/http/HttpClientError.ts#L31-L85).

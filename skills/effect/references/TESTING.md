@@ -12,6 +12,7 @@ Use this when writing Effect tests, tests involving time, retry, schedules, conc
 - Do not return an Effect from a plain Vitest `it` callback; use `it.effect` / `it.live` so the Effect is actually run.
 - Use test layers and `ConfigProvider` rather than global mutation.
 - Use `TestClock.setTime` / `TestClock.adjust` for sleeps, schedules, retries, leases, and timeouts.
+- Import `TestClock` from `effect/testing` (or `effect/testing/TestClock`), not the root `effect` barrel. Outside `it.effect`, provide `TestClock.layer()` so clock advancement also installs the tracking scheduler.
 - Fork sleeping effects before advancing `TestClock`.
 - Avoid arbitrary `Effect.sleep(...)` for synchronization. In `it.effect`, a sleep waits for `TestClock` advancement and can hang the test; in `it.live`, it uses real time and can make tests slow and flaky.
 - Assert typed failures, rollback, interruption, finalization, retry bounds, idempotency, concurrency laws, and malformed persistence where relevant.
@@ -37,7 +38,10 @@ it.effect("finds a user", () =>
 ```ts
 it.effect("publishes exactly once", () =>
   Effect.gen(function* () {
-    const published = yield* Queue.unbounded<Message>()
+    const published = yield* Effect.acquireRelease(
+      Queue.unbounded<Message>(),
+      Queue.shutdown,
+    )
     const ready = yield* Deferred.make<void>()
 
     const runWorker = makeWorker({
@@ -61,7 +65,8 @@ it.effect("publishes exactly once", () =>
 
 - Use `it.effect.prop` with Schema constraints or explicit fast-check arbitraries for invariants. Keep generators small enough that failures shrink to useful cases.
 - Use `layer(TestLayer)("suite", (it) => { ... })` when acquisition is intentionally shared across a test block. The layer is built before the block and released after it.
-- Shared layers also share state. Prefer per-test `Effect.provide(TestLayer)` when isolation matters, and do not rely on test order.
+- Shared layers also share state. Use `layer(TestLayer, { buildPerTest: true })("suite", (it) => { ... })` for fresh services per test, or provide `TestLayer` inside each test.
+- With nested per-test layers, enclosing shared services stay shared. Do not rely on test order.
 - Test both schema-generated valid values and explicit malformed boundary values; property tests complement targeted examples rather than replacing them.
 
 ## First-Class App Test Stubs
@@ -127,3 +132,5 @@ Guidance:
 Use `ConfigProvider.layer(ConfigProvider.fromUnknown(...))` when the test should exercise Config decoding.
 
 Use `Layer.succeed(AppConfiguration.Service, config)` when the app wraps decoded config in its own service and the test does not need to exercise env decoding.
+
+Sources: [test scopes and per-test layers](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/packages/vitest/src/index.ts#L252-L285) and [test clock scheduler requirements](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/packages/effect/src/testing/TestClock.ts#L27-L46).

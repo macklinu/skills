@@ -17,7 +17,17 @@ Check these before guessing:
 - the project-pinned `effect` package source and version
 - current upstream Effect source when the installed package does not answer the question
 
-This local guidance was last reviewed against `effect@4.0.3` source ([upstream revision](https://github.com/Effect-TS/effect/tree/35ec46efd001242a72f4a6027f9b89e220ae5eae)). Before introducing an unstable or version-sensitive API, confirm its export path and signature in the project's pinned Effect version. The review version is a gardening baseline, not a substitute for the project source.
+This guidance was reviewed against stable `effect@4.1.2` on 2026-11-07 ([release source](https://github.com/Effect-TS/effect/tree/506eef143bcc1750ce58920aac1e45da7265d103)). This is a reviewed baseline, not an exact-version requirement.
+
+Before introducing a version-sensitive API, confirm its export path and signature in the project's pinned Effect version. Do not treat unreleased `main` APIs as available in a published package.
+
+Use upstream [`LLMS.md`](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/LLMS.md), its linked `ai-docs` examples, and
+[migration guides](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/MIGRATION.md) to find current idioms.
+Check source and tests for signatures and edge cases. The data-model and module styles below are local preferences, not Effect requirements.
+
+- Upgrade `effect` and its runtime ecosystem packages, such as platform adapters, SQL drivers, atom bindings, and `@effect/vitest`, together to matching v4 versions.
+- Import consolidated modules from paths such as `effect/http` and `effect/sql`, not old `@effect/platform` or `effect/unstable/*` paths.
+- Check `@stability` in source. An import path without `unstable` is not a stability guarantee; unstable APIs can break in minor releases, and experimental APIs can break in patch releases.
 
 ## Branch Chooser
 
@@ -67,7 +77,7 @@ If a task spans several branches, read all matching files before editing.
 - Use `Stream` for effectful sources that emit many values over time and need pull, backpressure, interruption, or transformation.
 - Prefer Effect HTTP client modules for outgoing HTTP in Effect applications when their typed errors, layers, and client transforms are useful.
 - Prefer Effect-aware tests, explicit layers, and deterministic synchronization over sleeps.
-- Prefer decoders and `schema.makeEffect(...)` at untrusted boundaries; reserve throwing `schema.make(...)` for trusted construction, and never use casts to skip validation.
+- Decode untrusted payloads with `Schema.decodeUnknownEffect(...)`. Use `schema.makeEffect(...)` for decoded/type-side construction with typed failures, and reserve throwing `schema.make(...)` for trusted construction. Never use casts to skip validation.
 
 ## Quick Selection Guide
 
