@@ -49,19 +49,8 @@ globalThis.fetch = async (url, options) => {
 }
 `)
   const childMarker = join(root, 'child.json')
-  const authMarker = join(root, 'auth.json')
-  const stackMarker = join(root, 'stack.json')
   writeFileSync(join(bin, 'gh'), `#!${process.execPath}
-const args = process.argv.slice(2)
 const env = Object.fromEntries(['GH_TOKEN', 'GH_REPO', 'GH_HOST', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN', 'GH_DEBUG', 'DEBUG', 'GIT_TRACE'].map(name => [name, process.env[name]]))
-if (args[0] === 'auth') {
-  require('node:fs').writeFileSync(${JSON.stringify(authMarker)}, JSON.stringify({ args, env }), { mode: 0o600 })
-  process.stdout.write(process.env.FIXTURE_AUTH_STATUS ?? JSON.stringify([{ host: 'github.com', login: 'macklinu', active: true, state: 'success' }]))
-  process.exit(Number(process.env.FIXTURE_AUTH_EXIT ?? 0))
-}
-if (args[0] === 'stack') {
-  require('node:fs').writeFileSync(${JSON.stringify(stackMarker)}, JSON.stringify(args), { mode: 0o600 })
-}
 require('node:fs').writeFileSync(${JSON.stringify(childMarker)}, JSON.stringify(env), { mode: 0o600 })
 process.exit(17)
 `, { mode: 0o700 })
@@ -87,7 +76,7 @@ process.exit(result.status ?? 1)
   const runtimeArgs = [...process.execArgv, '--import', pathToFileURL(loader).href]
   return {
     root, home, file, directory, keyPath, keyDirectory, privateKey, publicKey,
-    config, requestMarker, childMarker, authMarker, stackMarker, pushMarker, env, runtimeArgs,
+    config, requestMarker, childMarker, pushMarker, env, runtimeArgs,
     run({ script = runScript, args, input }: { script?: string; args: string[]; input?: string }) {
       // Reuse tsx without a package download for every fixture command.
       return spawnSync(process.execPath, [...runtimeArgs, script, ...args], {
@@ -111,15 +100,9 @@ test('blocks credential-output, host and repository escapes without token reques
     ['gh', 'api', 'repos/macklinu/example-repo/pulls', '--verbose'],
     ['gh', 'api', 'repos/macklinu/example-repo/pulls', '-HAuthorization: fixture'],
     ['gh', 'api', 'repos/macklinu/example-repo/pulls', '--hostname=elsewhere'],
-    ['gh', 'stack', 'view', '-Relsewhere/repo'],
-    ['gh', 'stack', 'view', '--repo=elsewhere/repo'],
-    ['gh', 'stack', 'view', '--hostname=elsewhere'],
-    ['gh', 'stack', 'view', '--verbose'],
-    ['gh', 'stack', 'view', '-HAuthorization: fixture'],
-    ['gh', 'stack', 'link', 'https://github.com/macklinu/other/pull/1'],
-    ['gh', 'stack', 'link', 'https://github.com/macklinu/example-repo/../other/pull/1'],
-    ['gh', 'stack', 'link', 'https://github.com/macklinu/example-repo/pull/1?repo=other'],
-    ['gh', 'stack', 'link', 'https://github.com/macklinu/example-repo/pull/1/extra'],
+    ['gh', 'issue', 'create', '--repo=elsewhere/repo'],
+    ['gh', 'issue', 'comment', 'https://github.com/macklinu/other/issues/1'],
+    ['gh', 'stack', 'view'],
     ['push', 'HEAD', '--repo=elsewhere'],
     ['push', 'HEAD', '--rep=elsewhere'],
     ['push', 'HEAD', '--recurse-submodules=on-demand'],
@@ -130,65 +113,7 @@ test('blocks credential-output, host and repository escapes without token reques
     assert.equal(result.status, 1, JSON.stringify(args))
     assert.equal(existsSync(f.requestMarker), false)
     assert.equal(existsSync(f.childMarker), false)
-    assert.equal(existsSync(f.authMarker), false)
     assert.equal(existsSync(f.pushMarker), false)
-  }
-})
-
-test('stack verifies the personal account and scopes each child without App credentials', t => {
-  const f = fixture(t)
-  rmSync(f.file)
-  rmSync(f.keyPath)
-  for (const owner of ['macklinu', 'fairfield-consulting']) {
-    for (const command of [
-      ['stack', 'view'],
-      ['stack', 'link', `https://github.com/${owner}/example-repo/pull/42`],
-      ['stack', 'init', 'existing-branch'],
-      ['stack', 'rebase', '--no-trunk'],
-      ['stack', 'sync'],
-    ]) {
-      const result = f.run({ args: [`${owner}/example-repo`, 'gh', ...command] })
-      assert.equal(result.status, 17, result.stderr)
-      assert.deepEqual(JSON.parse(readFileSync(f.stackMarker, 'utf8')), command)
-      const auth = JSON.parse(readFileSync(f.authMarker, 'utf8'))
-      assert.deepEqual(auth.args, [
-        'auth', 'status', '--active', '--hostname', 'github.com', '--json', 'hosts',
-        '--jq', '.hosts["github.com"] | map({host, login, active, state})',
-      ])
-      const child = JSON.parse(readFileSync(f.childMarker, 'utf8'))
-      assert.deepEqual(auth.env, { GH_REPO: `${owner}/example-repo`, GH_HOST: 'github.com' })
-      assert.deepEqual(child, auth.env)
-      assert.equal(existsSync(f.requestMarker), false)
-    }
-  }
-  assert.equal(f.env.GH_TOKEN, 'inherited-personal')
-  assert.equal(f.env.GH_HOST, 'wrong.example')
-  assert.equal(f.env.GH_REPO, 'elsewhere/repo')
-})
-
-test('stack stops on missing, invalid, inactive or unexpected personal authentication', t => {
-  const f = fixture(t)
-  const account = { host: 'github.com', login: 'macklinu', active: true, state: 'success' }
-  for (const status of [
-    [], [account, account], [{ ...account, login: 'someone-else' }],
-    [{ ...account, active: false }], [{ ...account, state: 'error' }],
-    [{ ...account, host: 'other.example' }], [null], null, {},
-  ]) {
-    f.env.FIXTURE_AUTH_STATUS = JSON.stringify(status)
-    const result = f.run({ args: ['macklinu/example-repo', 'gh', 'stack', 'view'] })
-    assert.equal(result.status, 1)
-    assert.equal(existsSync(f.childMarker), false)
-    assert.equal(existsSync(f.stackMarker), false)
-    assert.equal(existsSync(f.requestMarker), false)
-  }
-  for (const [output, exit] of [['private-fixture-output', '0'], [JSON.stringify([account]), '1']]) {
-    f.env.FIXTURE_AUTH_STATUS = output
-    f.env.FIXTURE_AUTH_EXIT = exit
-    const result = f.run({ args: ['macklinu/example-repo', 'gh', 'stack', 'view'] })
-    assert.equal(result.status, 1)
-    assert.equal((result.stdout + result.stderr).includes(output), false)
-    assert.equal(existsSync(f.childMarker), false)
-    assert.equal(existsSync(f.requestMarker), false)
   }
 })
 
@@ -354,7 +279,7 @@ test('setup requires explicit path input for fresh config and leaves failed migr
 test('local PEM signs a valid scoped JWT for each owner without inherited personal credentials', t => {
   const f = fixture(t)
   for (const [owner, id] of [['macklinu', 101], ['fairfield-consulting', 202]]) {
-    const result = f.run({ args: [`${owner}/example-repo`, 'gh', 'pr', 'view', '1'] })
+    const result = f.run({ args: [`${owner}/example-repo`, 'gh', 'issue', 'create', '--title', 'Fixture issue', '--body', 'Fixture body'] })
     assert.equal(result.status, 17, result.stderr)
     const request = JSON.parse(readFileSync(f.requestMarker, 'utf8'))
     assert.equal(request.url, `https://api.github.com/app/installations/${id}/access_tokens`)

@@ -6,7 +6,7 @@
 - [setup-tooling](skills/setup-tooling/) — Create a pnpm 12/Turborepo monorepo or add OxC, Lefthook, and local skills to an existing repo.
 - [pr-description](skills/pr-description/) — Create concise GitHub pull request descriptions with template and visual-evidence support.
 - [setup-macklinu-machine](skills/setup-macklinu-machine/) — Configure a private local App PEM path and installation IDs on macOS, and add the machine skill instruction to a repository.
-- [macklinu-machine](skills/macklinu-machine/) - Use existing authentication for normal Git reads and pushes, the bot identity for commits, and the GitHub App for PRs and other GitHub CLI/API commands, with narrow gh-stack and image-upload exceptions.
+- [macklinu-machine](skills/macklinu-machine/) - Use existing auth for normal Git and GitHub commands, the bot author and committer identity for commits, and App auth only to open issues/PRs, post comments/replies, and edit bot-owned comments/replies.
 - [machine-pr-create](skills/machine-pr-create/) — Open or reuse the intended PR as the machine and request macklinu as reviewer.
 - [machine-pr-feedback](skills/machine-pr-feedback/) — Handle one PR review as the machine, reply briefly, and re-request macklinu after published fixes.
 - [setup-project-coordinator](skills/setup-project-coordinator/) - Manually bootstrap a Herdr coordinator with explicit memory loading and bounded worker briefs.

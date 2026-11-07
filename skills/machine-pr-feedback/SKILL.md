@@ -9,7 +9,7 @@ compatibility: Requires macklinu-machine and a writable same-repository PR head.
 
 Invocation: `/machine-pr-feedback <review-url>` — exactly one argument.
 
-Read repository instructions and load `macklinu-machine`. Use its runner for every GitHub operation and commit, including linked-guide commands; follow it for identity checks. Use normal `git push` with the repository's existing authentication to publish the intended branch.
+Read repository instructions and load `macklinu-machine` for identity selection. Use its runner for commits and comments/replies, including bot-owned comment edits, and normal authentication for other `gh` commands and Git pushes.
 
 ## 1. Select the review and head
 
