@@ -1,16 +1,21 @@
 # Effect CLI
 
-Read this only when the project imports `effect/cli`. Verify the unstable CLI surface against the pinned Effect version.
+Use this reference only when the project imports `effect/cli`. Keep an established CLI framework unless the task calls for changing it.
 
-- Import `Argument`, `Command`, and `Flag` from `effect/cli`. Define typed commands with `Command.make`, reusable `Flag.String(...)` / `Argument.String(...)` values, and `Flag.withSchema(...)` / `Argument.withSchema(...)` to validate or transform parsed values before handlers run. Constructors such as `Flag.Boolean`, `Flag.Int`, and `Flag.Literals` are capitalized.
-- Compose subcommands and shared flags declaratively. Keep domain behavior in services and make command handlers thin named effects.
-- Distinguish parse/usage errors from typed application failures so help text, exit status, and diagnostics remain truthful.
-- Send human output through Effect `Console`; keep machine-readable output stable and avoid mixing diagnostics into stdout.
-- Provide platform services once at the entry point, run the composed command with `Command.run({ version: "..." })`, and hand the resulting effect to the platform `runMain`. `Command.run` reads application arguments from `Stdio`; use `Command.runWith(command, { version: "..." })(["--flag", "value"])` for explicit argument arrays without the executable/script prefix.
-- Acquire files, terminals, clients, and other resources in Layers/scopes so interruption and process shutdown run finalizers.
-- Built-in help, version, and parse diagnostics use `CliOutput.Presenter`. Annotated handler failures use `CliOutput.Formatter` and are rethrown after rendering. Set `renderErrors: false` when the host owns error rendering; this does not suppress requested help.
+Compose typed commands, subcommands, arguments, and shared flags declaratively. Validate parsed values with Schema before handlers run. Keep handlers thin named effects that call application services instead of implementing domain behavior.
 
-## Sources
+Distinguish parse and usage errors from application failures so help, exit status, and diagnostics describe what happened. Send human output through Effect `Console`. Keep machine-readable stdout stable and send diagnostics elsewhere, so scripts can consume results without parsing log messages.
 
-- [Current command, flag, schema, and platform wiring example](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/ai-docs/src/70_cli/10_basics.ts#L7-L161).
-- [Command runners and rendering policy](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/packages/effect/src/cli/Command.ts#L1868-L1974).
+## Own startup, output, and shutdown
+
+Provide platform services once at the entry point and pass the composed command effect to the platform `runMain`. `Command.run` reads arguments from `Stdio`; use `Command.runWith` for tests or hosts that supply explicit argument arrays, without the executable or script prefix.
+
+Acquire files, terminals, clients, and other resources in Layers or scopes so interruption and shutdown run their finalizers.
+
+Decide whether the CLI runner or its host renders failures. Built-in help and parse diagnostics use `CliOutput.Presenter`; annotated handler failures use `CliOutput.Formatter` and are rethrown after rendering.
+
+Set `renderErrors: false` when the host owns error rendering to avoid duplicate diagnostics. Requested help is still presented.
+
+## Source hints
+
+Start with `ai-docs/src/70_cli/10_basics.ts` in the matching Effect checkout. Read `packages/effect/src/cli/Command.ts` for argument and rendering behavior rather than copying older runner signatures.

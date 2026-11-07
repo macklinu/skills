@@ -1,141 +1,53 @@
-# Schema And Data Modeling
+# Schema and data modeling
 
-Use this when touching data models, DTOs, row schemas, wire contracts, brands, variants, optional fields, or decoders.
+Use schemas to define contracts, not to duplicate TypeScript shapes. Keep the project's established modeling patterns unless the task changes them.
 
-## Records
+## Records and scalar values
 
-Default to `Schema.Struct(...)` plus a same-name `interface`.
+Default to `Schema.Struct` plus a same-name interface. Derive scalar IDs and value objects from constrained branded schemas so a brand carries a checked domain rule, not only a label.
 
 ```ts
+import { Schema } from "effect"
+
+export const UserId = Schema.NonEmptyString.pipe(Schema.brand("UserId"))
+export type UserId = typeof UserId.Type
+
 export const User = Schema.Struct({
   id: UserId,
   name: Schema.NonEmptyString,
   email: Schema.optionalKey(Schema.String),
 })
-
 export interface User extends Schema.Schema.Type<typeof User> {}
 ```
 
-Guidance:
+Use `Schema.fromBrand` when an existing `Brand` constructor owns the check. Avoid `Schema.Class` and `Schema.TaggedClass` as defaults for application data.
 
-- Add `.annotate({ identifier: "User" })` only when tooling consumes it: HTTP API, RPC, OpenAPI/JSON Schema, docs, diagnostics, or codegen.
-- Use `schema.make(...)` when construction is trusted. It validates the decoded/type-side representation and applies constructor defaults; it does not decode encoded input.
-- Use `schema.makeEffect(...)` when construction failure should stay in the Effect error channel. It fails with `SchemaIssue.Issue`, not `Schema.SchemaError`. Boundary decoders such as `Schema.decodeUnknownEffect(...)` fail with `Schema.SchemaError` instead.
-- Decode unknown input at boundaries with `Schema.decodeUnknownEffect(...)` by default.
-- Use `Schema.decodeUnknownSync(...)` only in scripts, tests, or startup paths where throwing is acceptable.
-- Use `Schema.decodeUnknownOption(...)` only when mismatch details are intentionally discarded.
-- Use `Schema.decodeUnknownResult(...)` for pure code that wants explicit success/failure without Effect.
-- Synchronous, Option, and Result decoders require service-free decoding. Use the Effect decoder for service-dependent or asynchronous transformations.
+Reuse `.fields` and field transformations for semantically related contracts. Use explicit mapping when domain translation, joins, or behavior differ; use `Schema.encodeKeys` when only wire names differ. Add identifiers only when diagnostics or tooling consume them.
 
-See the [construction contract](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/packages/effect/src/Schema.ts#L214-L291) and [Effect decoder error type](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/packages/effect/src/Schema.ts#L1514-L1542).
+**Field transformations can lose validation.** `.mapFields` and `Schema.fieldsAssign` drop whole-record checks by default. Reapply checks for the new contract; preserve them with `unsafePreserveChecks` only after confirming they remain valid.
 
-## Field And Contract Reuse
+## Absence and construction
 
-Reuse fields directly when contracts are semantically related.
+Use `Schema.optionalKey` for absent keys and `Schema.optional` when explicit `undefined` belongs in the contract. Accept `null` only when it is a real boundary value. Keep normalized domain fields required and apply defaults during decoding or construction instead of weakening the domain type.
 
-```ts
-export const CreateUserInput = Schema.Struct({
-  name: User.fields.name,
-  email: User.fields.email,
-})
+Decode unknown boundary input with `Schema.decodeUnknownEffect`. For construction, `schema.makeEffect` validates the decoded/type-side representation and applies constructor defaults; it does not decode encoded input. Reserve throwing `schema.make` for trusted construction.
 
-export const StoredUser = User.pipe(
-  Schema.fieldsAssign({
-    createdAt: Schema.DateTimeUtcFromString,
-  }),
-)
-```
+Construction failures use `SchemaIssue.Issue`; boundary decoding uses `Schema.SchemaError`. Choose a pure decoder only when decoding is service-free and its failure policy fits: throwing, explicit failure, or intentionally discarded mismatch details.
 
-Guidance:
+## Internal states and boundary variants
 
-- Use `.fields`, `Schema.fieldsAssign(...)`, and `.mapFields(...)` when contracts are genuinely related.
-- Field reuse does not preserve whole-record checks. `.mapFields(...)` and `Schema.fieldsAssign(...)` drop them by default; reapply checks for the new contract. Use `unsafePreserveChecks` only after confirming the old checks remain valid.
-- Use `Schema.encodeKeys(...)` when decoded TypeScript names differ from encoded wire/storage keys and naming is the only difference.
-- Keep explicit mapping when behavior, joins, validation, or domain translation is involved.
-- Use `Schema.extendTo(...)` sparingly for decoded-only derived fields.
-- Use field reuse to build small related contracts, not one oversized inheritance-by-schema object.
+Use `Data.TaggedEnum` with `Data.taggedEnum` for internal workflow decisions and exhaustive `$match`. Its `$is` checks only the tag, not untrusted fields. Do not add a schema solely to obtain matching utilities.
 
-## Optionality And Defaults
+Use `Schema.TaggedStruct` for a reusable boundary variant and `Schema.TaggedUnion` when a union needs decoding, encoding, persistence, or schema composition. Derive their types with `type Event = typeof Event.Type`; do not hand-write tags or duplicate fields. Use `.cases`, `.guards`, and `.match` where useful.
 
-- Use `Schema.optionalKey(...)` for absent JSON/storage keys.
-- Use `Schema.optional(...)` only when explicit `undefined` is part of the contract.
-- Use `Schema.NullOr`, `Schema.UndefinedOr`, or `Schema.NullishOr` only when nullish values are truly part of the encoded contract.
-- Keep normalized defaulted values as required fields and apply defaults in constructors/decoding.
-- Do not make domain values optional merely for construction convenience.
+For external discriminators such as `type`, use `Schema.tag` in the contract and `Schema.toTaggedUnion("type")` when you need union helpers. Use `Schema.tagDefaultOmit` only when the encoded contract intentionally omits the discriminator.
 
-## Nominal Values
+## Typed errors
 
-- Use constrained branded schemas for scalar IDs and value objects.
-- Use normal schema constraints before `Schema.brand(...)` for most code.
-- Reach for `Schema.fromBrand(...)` only when the project already models brands with `Brand` constructors or wants the check packaged with the brand constructor.
+`Schema.TaggedError` is the class exception to these data-model defaults. Map infrastructure failures into domain-specific tagged errors at service boundaries, retaining useful operation labels and `Schema.Defect()` payloads. Use schema unions for public transport error contracts.
 
-## Variants
+Prefer typed recovery with `Effect.catchTag`, `Effect.catchTags`, or `Effect.catch`. For tagged `reason` fields, `Effect.catchReason` and `Effect.catchReasons` preserve the service's error model.
 
-```ts
-type Step = Data.TaggedEnum<{
-  Continue: { readonly cursor: number }
-  Finished: { readonly count: number }
-}>
+At supervision boundaries, handle broad causes only when the recovery policy requires it and preserve interruption. Check the chosen combinator's mixed-cause behavior rather than assuming typed recovery handles defects or preserves every interruption-containing cause.
 
-export const Step = Data.taggedEnum<Step>()
-
-const next = Step.Continue({ cursor: 10 })
-const label = Step.$match(next, {
-  Continue: ({ cursor }) => `continue at ${cursor}`,
-  Finished: ({ count }) => `finished ${count}`,
-})
-```
-
-```ts
-export const Event = Schema.TaggedUnion({
-  Started: { runId: RunId },
-  Finished: { runId: RunId, result: Schema.Json },
-})
-
-export type Event = typeof Event.Type
-
-const event = Event.cases.Started.make({ runId })
-const label = Event.match(event, {
-  Started: ({ runId }) => `started ${runId}`,
-  Finished: ({ runId }) => `finished ${runId}`,
-})
-```
-
-Guidance:
-
-- Use `Data.TaggedEnum` for internal control-flow algebras; it provides constructors, `$is`, and exhaustive `$match`. Do not add a Schema solely to obtain these utilities.
-- `Data.taggedEnum`'s `$is` checks only the tag. It does not validate untrusted fields.
-- Use `Schema.TaggedStruct` for the ordinary Effect-owned `_tag` variant.
-- Use `Schema.TaggedUnion` when the union needs decoding, encoding, persistence, wire validation, JSON Schema derivation, or schema composition.
-- For `Schema.TaggedStruct` and `Schema.TaggedUnion`, derive the TypeScript type from the schema with `type Foo = typeof Foo.Type`. Do not hand-write `_tag` or duplicate schema fields in an interface.
-- Prefer a principled split over forcing one representation everywhere: Data internally, Schema at boundaries.
-- Use `Schema.tag(...)` when an external contract has a custom discriminator field such as `type` or `kind`; combine those structs with `Schema.toTaggedUnion("type")` when union helpers are needed.
-- If the encoded contract omits the discriminant, use `Schema.tagDefaultOmit(...)` deliberately.
-- Avoid `Schema.Class` and `Schema.TaggedClass` for new data models.
-
-## Errors
-
-`Schema.TaggedError` is the explicit class exception for typed Effect errors.
-
-```ts
-export class PersistenceError extends Schema.TaggedError<PersistenceError>()(
-  "UserRepo.PersistenceError",
-  {
-    operation: Schema.String,
-    cause: Schema.Defect(),
-  },
-) {}
-```
-
-Guidance:
-
-- Map infrastructure failures into domain-specific tagged errors at service boundaries.
-- Include operation labels when they help diagnose adapter, persistence, provider, or transport failures.
-- Recover from expected typed failures with `Effect.catchTag(...)`, `Effect.catchTags(...)`, or `Effect.catch(...)`. The v3 name `Effect.catchAll` is now `Effect.catch`.
-- For an error with a tagged `reason` field, use `Effect.catchReason(errorTag, reasonTag, handler)` or `Effect.catchReasons(errorTag, handlers)` to handle reasons without flattening the service's error model.
-- Typed recovery does not recover a cause containing a defect. Typed failures in such mixed causes become defects; use cause-level handling only when the boundary intentionally handles those failures.
-- Use schema unions for public API or transport error surfaces.
-- Use `Schema.Defect()` for defect-like payloads.
-- Preserve interruption when catching broad causes at ingress, worker, or stream boundaries.
-
-See the [error-handling migration guide](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/migration/error-handling.md#L7-L19) and [reason-error examples](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/ai-docs/src/01_effect/04_errors/20_reason-errors.ts#L11-L63).
+For exact construction, field-transformation, and variant behavior, read `packages/effect/src/Schema.ts` in the Effect checkout. For mixed-cause recovery, read the `catch` combinators in `packages/effect/src/Effect.ts`; for reason errors, read `ai-docs/src/01_effect/04_errors/20_reason-errors.ts`.

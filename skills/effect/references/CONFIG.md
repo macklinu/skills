@@ -1,70 +1,27 @@
 # Config
 
-Use this when reading runtime configuration, env vars, `.env` files, provider-specific settings, or writing `layerConfig(...)` helpers.
+Read runtime configuration through `Config` recipes in layers, not `process.env` inside application logic. Keep environment, `.env`, and directory sources at startup boundaries so workflows consume validated settings rather than repeatedly reading deployment state.
 
-Read runtime configuration through Effect `Config` recipes and provider layers, not direct `process.env` access inside application logic.
+Use `Config.Redacted` for credentials and `Config.schema` for refined domain values. Use `Config.option` when absence is meaningful; do not invent a default that hides a required credential or application authority.
 
-```ts
-export const dataDirectoryConfig = Config.schema(
-  AbsolutePath,
-  "APP_DATA_DIR",
-)
+## Default absence, not invalid input
 
-export const layerFromEnvironment = Layer.effect(
-  Configuration.Service,
-  Effect.gen(function* () {
-    const apiKey = yield* Config.Redacted("API_KEY")
-    const optionalModel = yield* Config.option(Config.String("MODEL"))
-    const enabled = yield* Config.Boolean("FEATURE_ENABLED").pipe(
-      Config.withDefault(false),
-    )
+Use `Config.withDefault` only when absence has a safe domain meaning. Invalid values in a relevant provider representation and source failures still fail. `Config.orElse` can replace any `ConfigError`, including invalid values and source failures, so use it only when that broader recovery is intentional; defects and interruption still propagate.
 
-    return Configuration.Service.of({ apiKey, optionalModel, enabled })
-  }),
-)
-```
+Apply defaults to individual fields when partial configuration must be preserved. A default around `Config.all` replaces the entire group if any child is absent, unless another child fails. For example, a default port should not replace an explicitly supplied host.
 
-## Config Recipes
+### Provider-shape hazard
 
-- `Config<T>` is yieldable and reads the current `ConfigProvider` reference.
-- The default provider is `ConfigProvider.fromEnv()`.
-- Use `Config.Redacted(...)` for credentials.
-- Use `Config.schema(...)` for refined values.
-- Use `Config.option(...)` for semantic absence.
-- Use `Config.withDefault(...)` for semantic-absence defaults. Invalid values in a relevant provider representation and source errors still fail; an incompatible provider shape can count as absence.
-- Use `Config.orElse(...)` only when intentionally replacing absence or any `ConfigError`, including source failures. Defects and interruptions still propagate.
-- Apply `Config.withDefault(...)` to individual fields when partial configuration must be preserved. A default on `Config.all(...)` replaces the entire group if any child is absent, unless another child fails.
-- Use `Config.unwrap(...)` / `Config.Wrap<T>` for `layerConfig(...)` helpers.
+Missing or incompatible provider shapes can count as semantic absence. Do not assume every malformed container reaches validation as an invalid value. When this distinction matters to a required setting or safe default, read `Config.schema` and test the actual provider representation.
 
-## Providers
+## Select providers at the boundary
 
-- Use `ConfigProvider.layer(provider)` to replace the active provider for an app or suite.
-- Use `ConfigProvider.layerAdd(provider)` for fallbacks; pass `{ asPrimary: true }` when the added provider must override the current provider. Fallbacks fill missing paths; they do not recover invalid values or source failures.
-- Use `ConfigProvider.fromUnknown(...)` for deterministic test config.
-- Use `ConfigProvider.fromEnv(...)` for environment variables.
-- Use `ConfigProvider.constantCase` when camelCase schema keys should read `SCREAMING_SNAKE_CASE` env vars.
-- Use `ConfigProvider.nested(...)` to scope a provider under a prefix.
-- Treat `.env`, directory, and environment providers as startup/boundary sources, not business-workflow reads.
+Use `ConfigProvider.layer` to replace the active provider. Use `ConfigProvider.layerAdd` for fallbacks, or `{ asPrimary: true }` when the added provider must take precedence. Fallbacks fill missing paths; they do not recover invalid values or source failures.
 
-## Layer Config Helpers
+Use `ConfigProvider.fromUnknown` for deterministic config tests. If the application already wraps settings in a service and the test is not exercising decoding, provide that service directly with `Layer.succeed` instead. Keep environment naming and nesting transformations in provider composition.
 
-Library-style layers often expose both concrete `layer(options)` and config-backed `layerConfig(options: Config.Wrap<Options>)`.
+## Offer config-backed layers when useful
 
-```ts
-export const layerConfig = (
-  config: Config.Wrap<ClientOptions>,
-) =>
-  Layer.effect(
-    Client.Service,
-    Config.unwrap(config).pipe(
-      Effect.flatMap(makeClient),
-      Effect.map((client) => Client.Service.of(client)),
-    ),
-  )
-```
+When a service naturally accepts runtime settings, keep a concrete `layer(options)` available for callers and tests. Add `layerConfig(options: Config.Wrap<Options>)` using `Config.unwrap` when config composition is useful, not as a mandatory wrapper around every layer.
 
-Use this pattern when a service naturally supports runtime config while still allowing tests to pass concrete values.
-
-Use `Layer.succeed(AppConfiguration.Service, testConfig)` when the app already wraps environment config in an application service and the test does not need to exercise Config decoding itself.
-
-Sources: [config defaults](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/packages/effect/src/Config.ts#L450-L495) and [provider fallback precedence](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/packages/effect/src/ConfigProvider.ts#L687-L740).
+For exact absence and group-default semantics, read `withDefault`, `all`, and `schema` in `packages/effect/src/Config.ts` in the Effect checkout. For provider precedence and representation rules, read `packages/effect/src/ConfigProvider.ts`.

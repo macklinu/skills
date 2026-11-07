@@ -1,44 +1,25 @@
-# Resources, Scopes, And Runtime Boundaries
+# Resources and runtime boundaries
 
-Use this when acquiring resources, managing scopes, starting an application, or bridging Effect services into a non-Effect host.
+Choose who owns a resource before acquiring it. A layer usually owns shared clients and connections; a local operation owns resources that must close when that operation finishes.
 
-## Resource Lifetime
+## Keep acquisition and release together
 
-- Use `Effect.acquireRelease(acquire, release)` for connections, clients, file handles, listeners, and SDK resources that require cleanup.
-- Acquire the resource once in its owning `Layer` or scope. Keep the release action next to acquisition and make it safe to run during interruption.
-- `acquireRelease` protects acquisition from interruption by default and registers release only after acquisition succeeds. Use its third argument `{ interruptible: true }` only when acquisition can safely be canceled without leaving a partially acquired resource.
-- Release receives `(resource, exit)` and must return an Effect with no typed failures. Handle expected cleanup failures explicitly rather than casting them away.
-- Use `Effect.scoped` only when the caller should own and close a local scope. Layers and other scoped callers already provide scope ownership.
-- Use specialized tools such as `Pool`, `ScopedCache`, or `ScopedRef` only when their sharing and replacement semantics match the resource; do not replace a simple acquire/release pair with a lifecycle catalog.
-- Never return a scoped resource to code that can outlive its owning scope.
+Use `Effect.acquireRelease` and keep the release action next to acquisition. Release receives the resource and closing `Exit`; handle expected cleanup failures explicitly because finalizers cannot return typed failures. Make cleanup safe during interruption.
 
-## Process Entry Points
+Use `Effect.scoped` when the caller needs to create and close a local scope, not as extra wrapping around a layer that already owns one. Never return a resource to code that can outlive its scope. Reach for `Pool`, `ScopedCache`, or `ScopedRef` only when their sharing or replacement semantics match the actual lifecycle.
 
-Represent a long-running application as layers, convert it with `Layer.launch`, and run it once at the process edge with the platform runtime:
+Acquisition is uninterruptible by default, and release is registered only after it succeeds. Choose `{ interruptible: true }` only when canceling acquisition cannot leave a partially acquired resource behind.
 
-```ts
-import { Layer } from "effect"
-import { NodeRuntime } from "@effect/platform-node"
+## Run at the application edge
 
-const main = Layer.launch(AppLive)
-NodeRuntime.runMain(main)
-```
+For a standalone long-running application, compose layers, use `Layer.launch`, and run once with the platform's `NodeRuntime.runMain` or `BunRuntime.runMain`. These entry points connect process shutdown to fiber interruption and finalizers.
 
-Use the corresponding `BunRuntime.runMain` on Bun. Platform `runMain` installs process shutdown handling so interruption reaches fibers and finalizers.
+When a framework owns the event loop, create one `ManagedRuntime.make(AppLayer)` at the host adapter and dispose it during host shutdown. Its layer builds lazily and services are cached. Use `runPromise` for asynchronous handlers; `runSync` throws if either initial acquisition or the requested effect crosses an asynchronous boundary.
 
-## Non-Effect Hosts
+Keep runners out of domain services. Map typed failures to host responses at the adapter; choose `runPromiseExit` when the host must distinguish typed failures, defects, and interruption. A rejected `runPromise` does not provide a typed Promise error channel.
 
-- For Hono, Express, Fastify, or another host that owns the event loop, create one `ManagedRuntime.make(AppLayer)` at the integration boundary.
-- Call that managed runtime from host handlers, and dispose it during host shutdown so layer finalizers run.
-- `ManagedRuntime.make` builds its layer lazily and caches the resulting services. `runSync` throws if first-time layer acquisition or the requested effect crosses an asynchronous boundary; use `runPromise` for asynchronous hosts.
-- Use `runtime.runPromiseExit(...)` when the host must inspect typed failures, defects, or interruption before producing a response. `runPromise(...)` rejects on failure and does not preserve a typed Promise rejection channel.
-- Keep `ManagedRuntime.runPromise`, `runSync`, or `runCallback` in the host adapter. Do not scatter `Effect.runPromise` through services or application workflows.
-- Map typed failures to the host's response/error model at this boundary; do not erase the Effect error channel inside domain services.
+## Bridge an existing scope
 
-Do not copy v3 `Runtime<R>` / `Effect.runtime` bridges. v4 runners live on `Effect`; when an existing Effect scope owns the services, use `Effect.context<R>()` with a corresponding `Effect.run*With(services)` runner rather than creating a second resource owner. Capturing a context does not extend resource lifetime; stop host work before the owning scope closes.
+If an Effect scope already owns the services, capture `Effect.context<R>()` and use the matching `Effect.run*With(services)` runner instead of creating a second resource owner. Capturing a context does not extend resource lifetime, so stop host work before that scope closes. Do not copy v3 `Runtime<R>` or `Effect.runtime` bridges.
 
-Sources:
-
-- [Acquisition contract](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/packages/effect/src/Effect.ts#L6802-L6872).
-- [Managed runtime methods](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/packages/effect/src/ManagedRuntime.ts#L145-L220).
-- [Runtime migration guide](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/migration/runtime.md#L15-L17).
+For exact acquisition and runner contracts, read `packages/effect/src/Effect.ts` and `packages/effect/src/ManagedRuntime.ts` in the Effect checkout. Consult `migration/runtime.md` when replacing an older bridge.
