@@ -26,8 +26,8 @@ Do not use streams just to loop forever. For one repeated effect with no emitted
 - Broadcast events: `PubSub` plus `Stream.fromPubSub(...)`.
 - Latest-value state plus updates: `SubscriptionRef`.
 - Schedule-generated ticks/values: `Stream.fromSchedule(...)`.
-- Paginated pull APIs: `Stream.paginate(...)`; its step function is already effectful, returning `Effect<[chunk, Option<nextState>]>`.
-- Async iterable/platform source: `Stream.fromAsyncIterable(...)` when no native Effect source exists.
+- Paginated pull APIs: `Stream.paginate(...)`; its step returns `Effect<readonly [ReadonlyArray<A>, Option<nextState>]>`. The stream emits each page's elements, not the page array; a final page is emitted even when the next state is `Option.none()`.
+- Async iterable/platform source: `Stream.fromAsyncIterable(iterable, onError)` when no native Effect source exists. Map iterator exceptions into a typed boundary error with `onError`.
 - Effect that produces a stream after reading services/config: `Stream.unwrap(...)`.
 
 ## Transformation Chooser
@@ -40,7 +40,7 @@ Do not use streams just to loop forever. For one repeated effect with no emitted
 - Multiple inner streams concurrently: `Stream.flatMap(fn, { concurrency })`.
 - Keep only matching values: `Stream.filter(...)` / `Stream.filterEffect(...)`.
 - Stateful transformation: `Stream.mapAccum(...)` / `Stream.mapAccumEffect(...)`.
-- Paginated pull-to-pages: prefer `Stream.paginate(...)` over hand-rolled loops. There is no separate `Stream.paginateEffect`.
+- Paginated pull-to-elements: prefer `Stream.paginate(...)` over hand-rolled loops. There is no separate `Stream.paginateEffect`.
 
 ## Consumption Chooser
 
@@ -83,6 +83,7 @@ Guidance:
 - Use `Queue` when each event/item should be consumed by one consumer or worker.
 - Use `PubSub` to broadcast to active subscribers. Dropping/sliding overflow can lose events, and late subscribers receive past events only when replay is configured.
 - Use `SubscriptionRef` when consumers need the current value and a stream of changes.
+- Own queue/pubsub shutdown in the producing scope, for example with `Effect.acquireRelease(Queue.bounded<Event, Cause.Done>(capacity), Queue.shutdown)`. `Stream.fromQueue` does not own queue shutdown. To finish normally after draining, call `Queue.end`; `Stream.fromQueue` removes `Cause.Done` from its error channel.
 - Expose a `Stream` from service interfaces when callers should consume events, not push into the queue.
 - Keep producer queues/private refs inside the implementation or test service.
 
@@ -108,13 +109,16 @@ Use `Stream.buffer(...)` only when producer and consumer should decouple.
 - `strategy: "sliding"`: keep the latest values by dropping old ones.
 - `capacity: "unbounded"`: rare; use only when growth is bounded elsewhere.
 
-Use `Stream.debounce(...)` for quiet-period behavior and `Stream.throttle(...)` / `Stream.throttleEffect(...)` for rate-shaped streams.
+Use `Stream.debounce(...)` for quiet-period behavior.
+
+`Stream.throttle({ cost, units, duration, strategy })` and `Stream.throttleEffect(...)` use a token bucket and cost whole chunks. The default `"shape"` strategy delays chunks; `"enforce"` drops chunks that exceed the rate. Use `Stream.rechunk(1)` first when pacing must apply one element at a time.
 
 ## Error Handling
 
 - Prefer typed stream errors over defects.
 - Use `Stream.mapError(...)` to translate errors at boundaries.
 - Use `Stream.catchIf(...)`, `Stream.catchTag(...)`, or `Stream.catchFilter(...)` for typed recovery.
+- Typed stream recovery skips every cause containing a defect, even when a typed error is also present. A typed error mixed only with interruption can still be recovered, so use a cause-level guard if every interruption-containing cause must propagate.
 - Use `Stream.catchCause(...)` only at explicit supervision boundaries.
 - Do not hide stream defects by default. `Effect.forkScoped` owns the consumer lifetime but does not propagate its failure to the layer that forked it. Join from a supervising workflow or use an explicit supervisor when failure must fail the owner; do not block layer acquisition on a long-lived join.
 
@@ -135,3 +139,9 @@ Use this for projection/reconciliation streams where each key needs ordered proc
 - Use `Stream.fromQueue(...)` with a test-owned `Queue` when the test needs to drive events interactively.
 - Use `Stream.take(n)` plus `Stream.runCollect` for finite assertions.
 - Avoid real sleeps; coordinate with `Deferred`, `Queue`, `Latch`, and `TestClock`.
+
+Sources:
+
+- [Pagination signature](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/packages/effect/src/Stream.ts#L1540-L1594).
+- [Queue streams](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/packages/effect/src/Stream.ts#L1163-L1191).
+- [Throttling semantics](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/packages/effect/src/Stream.ts#L8369-L8447).

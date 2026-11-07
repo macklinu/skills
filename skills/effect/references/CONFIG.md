@@ -33,12 +33,13 @@ export const layerFromEnvironment = Layer.effect(
 - Use `Config.option(...)` for semantic absence.
 - Use `Config.withDefault(...)` for semantic-absence defaults. Invalid values in a relevant provider representation and source errors still fail; an incompatible provider shape can count as absence.
 - Use `Config.orElse(...)` only when intentionally replacing absence or any `ConfigError`, including source failures. Defects and interruptions still propagate.
+- Apply `Config.withDefault(...)` to individual fields when partial configuration must be preserved. A default on `Config.all(...)` replaces the entire group if any child is absent, unless another child fails.
 - Use `Config.unwrap(...)` / `Config.Wrap<T>` for `layerConfig(...)` helpers.
 
 ## Providers
 
 - Use `ConfigProvider.layer(provider)` to replace the active provider for an app or suite.
-- Use `ConfigProvider.layerAdd(provider)` for fallbacks; pass `{ asPrimary: true }` when the added provider must override the current provider.
+- Use `ConfigProvider.layerAdd(provider)` for fallbacks; pass `{ asPrimary: true }` when the added provider must override the current provider. Fallbacks fill missing paths; they do not recover invalid values or source failures.
 - Use `ConfigProvider.fromUnknown(...)` for deterministic test config.
 - Use `ConfigProvider.fromEnv(...)` for environment variables.
 - Use `ConfigProvider.constantCase` when camelCase schema keys should read `SCREAMING_SNAKE_CASE` env vars.
@@ -65,3 +66,5 @@ export const layerConfig = (
 Use this pattern when a service naturally supports runtime config while still allowing tests to pass concrete values.
 
 Use `Layer.succeed(AppConfiguration.Service, testConfig)` when the app already wraps environment config in an application service and the test does not need to exercise Config decoding itself.
+
+Sources: [config defaults](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/packages/effect/src/Config.ts#L450-L495) and [provider fallback precedence](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/packages/effect/src/ConfigProvider.ts#L687-L740).

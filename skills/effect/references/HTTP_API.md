@@ -12,6 +12,13 @@ Read this only when the project uses `effect/http-api` or an existing `HttpApi` 
 Prefer `HttpApiTest` when testing an existing HttpApi implementation. `HttpApiTest.groups(Api, [...])` builds an in-memory typed client that exercises request encoding, routing, middleware, handlers, error mapping, and response decoding without opening a socket.
 
 - Provide the real handler Layers with test service implementations and `HttpServer.layerServices`.
+- Create the test client inside `Effect.scoped(...)` or a test-owned scope. Streaming response resources stay alive until the body finishes or that owning scope closes.
 - Provide client-side middleware, such as test authorization, separately from server middleware.
 - Assert through the generated typed client rather than invoking handler functions directly.
-- Keep a smaller number of live-server tests only for platform wiring that the in-memory pipeline does not cover.
+- Only call groups selected by `HttpApiTest.groups(Api, [...])`. The generated client's type still includes unselected groups, but their placeholder handlers defect when called.
+- Keep live-server tests for client aborts, socket handling, and platform wiring. The in-memory client does not emulate those transport behaviors.
+
+## Sources
+
+- [In-memory client requirements, selected groups, and streaming scopes](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/packages/effect/src/http-api/HttpApiTest.ts#L34-L79).
+- [Web handler disposal](https://github.com/Effect-TS/effect/blob/506eef143bcc1750ce58920aac1e45da7265d103/packages/effect/src/http/HttpRouter.ts#L530-L547).
