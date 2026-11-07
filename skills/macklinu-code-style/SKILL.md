@@ -1,67 +1,41 @@
 ---
 name: macklinu-code-style
-description: Apply my default code style for implementation and review through simple designs, focused APIs, explicit state models, contract-based non-tautological tests, idiomatic library use, focused documentation, and reviewable changes. Use whenever writing, changing, refactoring, testing, documenting, or reviewing code or dependencies, even when the user does not mention code style.
+description: Apply my preferences for design, APIs, state, tests, and documentation. Use whenever implementing, refactoring, testing, documenting, reviewing code, or changing dependencies.
 ---
 
-# macklinu Code Style
+# Code style
+
+Use these defaults even when tooling does not enforce them.
 
 ## Design
 
-- Choose the simplest design that fully satisfies the current requirement.
-- Add an abstraction only when repeated code or a real domain boundary justifies it. Do not create a helper, wrapper, union type, or configuration layer merely to hide one call.
-- Delete code, comments, tests, and transitional paths when they no longer serve the current implementation.
+- Satisfy the current requirement with the simplest design. Do not add speculative configuration, extension points, or fallbacks.
+- Prefer a little duplication to coupling unrelated behavior. Extract code for a shared rule, domain boundary, or clear resource ownership, not merely similar syntax.
+- Split modules for responsibilities that change independently, not to impose layers on small entry points.
+- Remove obsolete code, comments, tests, and transitional paths when replacing an implementation. Keep unrelated refactors separate.
 
 ## APIs and state
 
-- Expose only the API required by the current product behavior. Do not add commands, extension points, or configuration for possible future needs.
-- Use a named options object instead of positional arguments when a function takes more than one input.
-- Add data fields only when they carry useful information. Construct an error with no fields without passing a placeholder `{}` argument.
-- For user-visible state, define when it is created, updated, and cleared. Test the full validation sequence: show the error, edit the input, and recover to a valid state.
-- When a value can be in one of a fixed set of mutually exclusive states, model it with a discriminated union or state machine. Avoid multiple booleans when their combinations can represent impossible states; independent conditions can remain booleans.
-
-```ts
-// Avoid: several combinations are contradictory or meaningless.
-type RequestFlags = {
-  isLoading: boolean
-  isSuccess: boolean
-  isError: boolean
-}
-
-// Prefer: every value represents one valid state.
-type RequestState<T> =
-  | { status: "idle" }
-  | { status: "loading" }
-  | { status: "success"; value: T }
-  | { status: "error"; error: Error }
-```
+- Expose only APIs and fields that current behavior requires.
+- For functions you design with two or more inputs, use a named options object. Preserve library-required signatures.
+- Derive values from existing state instead of storing synchronized copies. If a stored copy is necessary, define its updates and invalidation.
+- Model mutually exclusive states with discriminated unions or state machines to prevent contradictory combinations. Keep independent conditions as booleans.
+- Define who creates, updates, and clears state, and who releases resources.
+- Enforce domain constraints even when a general-purpose parser accepts or normalizes forbidden input.
 
 ## Tests
 
-- Test observable behavior and state or resource transitions that are likely to fail.
-- Do not write tautological tests that calculate expected results with the same logic as the implementation or merely confirm that a mock returns its configured value. Derive expectations independently from the observable contract, and choose cases that would fail for a plausible defect.
-- Keep tests deterministic and focused. Do not test source-code structure, confirm that removed fields stay absent, exercise deliberate no-op stubs, or depend on incidental implementation details.
-- Prefer the framework's test and lifecycle utilities to custom wrappers.
-- When operation order or resources matter, make ownership and cleanup explicit in both the implementation and its tests.
+- Test observable outcomes, failures, and state or resource transitions, including recovery. Choose cases that catch a plausible defect.
+- Derive expectations independently. Do not reproduce implementation logic or test that a mock returns its configured value.
+- Keep tests deterministic. Test the contract, not source layout or incidental implementation details.
+- Prefer framework test and lifecycle utilities to custom wrappers.
 
-## Libraries and validation
+## Libraries
 
-- Read primary documentation and relevant source code before changing an unfamiliar rule, parser, or configuration.
-- Use a parser only when its accepted input matches the domain. If a general parser accepts or normalizes values that the domain forbids, retain explicit domain validation around it.
-- Use the installed library's standard patterns for resources, errors, discriminated data, and cleanup.
-- When library behavior is unclear, first check `repos/**` and `vendor/**` at the repository root for vendored source. Effect source is commonly available there.
+- Use installed libraries' standard resource, error, and cleanup patterns before adding wrappers.
+- Read primary documentation or source before changing unfamiliar library behavior or configuration.
 
-## Documentation and dependencies
+## Documentation
 
-- Treat code as the source of truth for the current implementation. Skip documentation updates when code already explains the change; do not repeat clear API names, control flow, or file structure in permanent docs.
-- Use docs for information code cannot express: enduring rationale and constraints, product vision, specifications of intended behavior, operations knowledge, and explanations for engineering or client stakeholders. Distinguish intended behavior from descriptions of the current implementation.
-- Keep quick-start documentation focused on the user's task. Put temporary branch or PR migration instructions and commit-specific handoffs in PR descriptions or working notes, not core product or architecture docs.
-- Preserve existing wording unless the change requires a user-visible documentation update.
-- Clearly distinguish versions that were tested from version ranges that are supported. Do not require consumers to use an exact version unless a verified compatibility constraint makes it necessary.
-- Explain exclusions and policy choices that could otherwise surprise reviewers or affect user decisions.
-- Keep user-facing status and delivery messages short. Report changed behavior, material assumptions, failures, and decisions that need attention.
-- Omit test counts and routine passing-CI claims. Include detailed verification only when requested or when it explains a risk.
-
-## Reviewability
-
-- Keep each module focused on one responsibility. When an entry point mixes concerns, separate view rendering, runtime wiring, and domain logic into appropriate modules.
-- When dependent changes are easier to review separately, use a small ordered stack of pull requests. Keep unrelated refactors out of the feature change.
+- Explain rationale, constraints, intended behavior, and operations that code cannot express. Distinguish intended behavior from the current implementation.
+- Keep quick starts task-focused. Put temporary migration and review notes in pull requests or working notes.
