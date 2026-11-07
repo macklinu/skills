@@ -26,7 +26,7 @@ Use these defaults even when tooling does not enforce them.
 ## Tests
 
 - Test observable outcomes, failures, and state or resource transitions, including recovery. Choose cases that catch a plausible defect.
-- Derive expectations independently. Do not reproduce implementation logic or test that a mock returns its configured value.
+- Do not write tautological tests. Derive expectations independently. Do not reproduce implementation logic or test that a mock returns its configured value.
 - Keep tests deterministic. Test the contract, not source layout or incidental implementation details.
 - Prefer framework test and lifecycle utilities to custom wrappers.
 
