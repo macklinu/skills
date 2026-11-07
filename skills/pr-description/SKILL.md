@@ -12,7 +12,7 @@ Keep details only when they affect review or release, such as a tradeoff, migrat
 
 ## Workflow
 
-Before any GitHub command, including help, read repository instructions and select the requested or required publishing identity. When `macklinu-machine` is requested or required, load that skill and use its runner for GitHub commands, including its verified personal-user `gh stack` path. Only its image-upload exception permits direct user-authenticated commands.
+Read repository instructions and select identity by operation. When `macklinu-machine` is requested or required, load that skill and use its runner to create PRs, post comments/replies, and edit bot-owned comments/replies. Run other `gh` commands directly with your existing login, including lookups, help, PR metadata edits, attachment uploads, and reviewer requests.
 
 1. Read `.github/PULL_REQUEST_TEMPLATE.md` if it exists.
    - Keep its headings, fields, and checkboxes.
@@ -56,8 +56,8 @@ Never fabricate evidence or present a mockup as a running UI. If the base cannot
 ## Publish attachments
 
 1. Prepare the selected captures or rendered illustrations for upload.
-1. Immediately before creating or editing the PR, read the applicable current `gh pr create --help` or `gh pr edit --help` through the selected identity's workflow.
-1. Use only the attachment behavior documented by that `gh` version. For machine publication, follow `macklinu-machine`'s image-upload policy and operation order. Otherwise, attach files in the same `gh pr create` or `gh pr edit` command when it supports uploads, so GitHub can replace local references with uploaded asset URLs.
+1. Immediately before creating or editing the PR, read the applicable current `gh pr create --help` or `gh pr edit --help` directly with normal auth.
+1. Use only the attachment behavior documented by that `gh` version. Upload attachments and edit the PR body with your existing login. For a machine-authored PR, create it through the runner first, then attach files with `gh pr edit` when it supports uploads so GitHub can replace local references with uploaded asset URLs.
 1. Re-read the created or updated PR body even if the attachment command exits non-zero, since partial uploads can still create or update the PR. Confirm that every intended visual renders, has useful alt text, and links to an uploaded asset instead of a local path.
 1. Report incomplete evidence. Do not repeat a failed command without checking the resulting PR.
 
