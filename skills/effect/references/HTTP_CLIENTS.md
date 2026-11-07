@@ -1,101 +1,27 @@
-# HTTP Clients
+# HTTP clients
 
-Use this when writing outgoing HTTP calls, Effect HttpClient adapters, status classification, HTTP retries, or rate limiting.
+Prefer Effect `HttpClient` in application and provider adapters when its typed errors, layers, and client transforms fit the project. Do not replace an established transport without a reason.
 
-Use Effect HTTP client modules for outgoing HTTP in app/provider code:
+Raw `fetch` is a deliberate alternative for platform transports, browser or edge constraints, small adapters, or libraries that avoid unstable Effect HTTP dependencies.
 
-- `effect/http/HttpClient`
-- `effect/http/HttpClientRequest`
-- `effect/http/HttpClientResponse`
-- `effect/http/HttpClientError`
+## Own the provider boundary
 
-Prefer Effect HttpClient in Effect application and provider code when its typed errors, layers, and transforms are useful. Raw `fetch` remains reasonable for browser or edge constraints, small adapters, platform transports, and libraries that intentionally avoid unstable Effect HTTP APIs.
+Give each adapter operation a named effect that constructs the request, attaches credentials, classifies status, decodes the body, and maps failures into errors its callers understand. Keep provider details inside the adapter and network calls outside authoritative database transactions. Preserve diagnostic evidence without exposing credentials or private payloads.
 
-## Boundary Shape
+With `HttpClient`, classify unsuccessful status before decoding a success payload. Choose body-only or full-response Schema decoding according to whether headers and status belong to the contract. For raw `fetch`, pass the `Effect.tryPromise` signal into the request, classify status explicitly, and decode unknown bodies with Schema.
 
-HTTP adapter methods should be named effects that own the full boundary:
+## Bound retries and deadlines
 
-- construct request
-- attach auth and headers
-- execute request
-- classify status
-- decode response body
-- map transport/status/decode failures to typed domain errors
-- apply retry/rate-limit policy where idempotent
+Use `HttpClient.retryTransient` for ordinary transient transport/status failures. Set a finite retry bound and a pacing schedule, for example `HttpClient.retryTransient({ times: 3, schedule: Schedule.exponential("200 millis") })`. Without a bound, retries can continue indefinitely; `Retry-After` sets a minimum delay.
 
-Keep raw provider/network effects outside business services and database transactions.
+Retry only when the operation is idempotent and the request body is replayable. Retry transient responses before success-body decoding.
 
-## Effect HttpClient
+Client retries do not cover later body reads or decoding; use operation-level `Effect.retry` only when the adapter can safely retry that whole operation. See [scheduling](SCHEDULING.md) for domain-specific policies.
 
-Useful APIs:
+Use `HttpClient.withRateLimiter` when proactive pacing fits the provider. Bound or disable its automatic `429` retries separately; they are otherwise unlimited.
 
-- `HttpClient.get(...)`, `post(...)`, `put(...)`, `patch(...)`, `del(...)`, `execute(...)` for service accessors.
-- `HttpClient.mapRequest(...)` / `mapRequestEffect(...)` for configured client transforms.
-- `HttpClientRequest.prependUrl(...)` for base URLs.
-- `HttpClientRequest.bearerToken(...)` for bearer auth.
-- `HttpClientRequest.acceptJson` for JSON accept headers.
-- `HttpClientRequest.bodyJson(...)` for effectful JSON body encoding.
-- `HttpClientRequest.schemaBodyJson(...)` for schema-backed JSON body encoding.
-- `HttpClient.filterStatusOk` / `HttpClientResponse.filterStatusOk` before decoding when non-2xx responses are failures.
-- `HttpClientResponse.schemaBodyJson(...)` for body-only decoding, `schemaJson(...)` for status/headers/body decoding, and `schemaNoBody(...)` for status/headers decoding.
-- `HttpClient.retryTransient(...)` for common transient HTTP failures.
-- `HttpClient.withRateLimiter(...)` for proactive pacing and learning from rate-limit headers. It requires a `RateLimiter` plus initial window, limit, and key options; it adds `RateLimiterError` to the error channel. Automatic `429` retries are unlimited by default; set `times` to bound them, or `0` to disable them.
+`HttpClient.timeout` covers the wrapped client until it returns a response, normally when headers arrive. Put a deadline around the full adapter when body reading and decoding must share it. Decide whether the deadline covers each attempt or the entire retry loop; transform order changes that budget.
 
-## Retry And Rate Limits
+## Source hints
 
-Use `HttpClient.retryTransient(...)` for common transient HTTP failures:
-
-- transport errors
-- timeouts
-- `408`
-- `429`
-- `500`
-- `502`
-- `503`
-- `504`
-
-Use `HttpClient.withRateLimiter(...)` when the client should proactively pace requests and learn from rate-limit / `Retry-After` headers.
-
-Use operation-level `Effect.retry(...)` when retry depends on domain-specific typed errors, provider payloads, or idempotency rules. Read `SCHEDULING.md` for custom schedules and `retryAfterMs` typed-provider patterns.
-
-## Raw Fetch Exception
-
-Use raw `fetch` deliberately when implementing a platform transport, adapting an API that cannot use Effect HttpClient, or targeting a runtime/library boundary where the unstable Effect HTTP modules are not an appropriate dependency.
-
-If a temporary raw `fetch` boundary is unavoidable, keep it inside an adapter service and still use Effect boundary discipline.
-
-```ts
-const request = Effect.fn("Provider.request")(function* (input: RequestInput) {
-  const response = yield* Effect.tryPromise({
-    try: (signal) => fetch(input.url, { signal, headers: input.headers }),
-    catch: (cause) => new ProviderError({ operation: "Provider.request", cause }),
-  })
-
-  if (!response.ok) {
-    return yield* Effect.fail(new ProviderRejected({
-      operation: "Provider.request",
-      status: response.status,
-    }))
-  }
-
-  const json = yield* Effect.tryPromise({
-    try: () => response.json(),
-    catch: (cause) => new ProviderError({ operation: "Provider.decodeJson", cause }),
-  })
-
-  return yield* Schema.decodeUnknownEffect(ResponseSchema)(json).pipe(
-    Effect.mapError((cause) =>
-      new ProviderError({ operation: "Provider.decodeResponse", cause }),
-    ),
-  )
-})
-```
-
-Guidance:
-
-- Prefer replacing this with Effect HttpClient before adding more behavior.
-- Wire `AbortSignal` from `Effect.tryPromise` into `fetch` when raw fetch is unavoidable.
-- Classify HTTP status before decoding successful payloads.
-- Decode unknown response bodies with Schema at the boundary.
-- Preserve provider evidence needed for diagnosis, but redact secrets and private payloads.
-- Apply retry only for idempotent operations.
+In the matching Effect checkout, read `packages/effect/src/http/HttpClient.ts` for retry, timeout, and rate-limit composition, and `packages/effect/src/http/HttpClientResponse.ts` for decoding.

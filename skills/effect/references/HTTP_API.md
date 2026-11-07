@@ -1,17 +1,21 @@
-# HttpApi
+# HTTP API
 
-Read this only when the project uses `effect/http-api` or an existing `HttpApi` definition. These modules are unstable; confirm exports against the pinned Effect version.
+Use this reference only when the project uses `effect/http-api` or an existing `HttpApi` contract. Do not introduce the unstable API stack merely to wrap an existing router.
 
-- Keep `HttpApi`, groups, endpoints, schemas, and middleware contracts separate from server implementations so handlers, clients, OpenAPI, and tests share one contract.
-- Build handler implementations as Layers with `HttpApiBuilder`. Keep handlers thin: accept decoded input, call application services, and return declared success or error values.
-- Put authentication and cross-cutting transport policy in `HttpApiMiddleware`; keep business authorization in domain/application services when it depends on domain state.
-- Compose the final routes and platform server at the application root. Use `HttpRouter.toWebHandler` only at serverless or external-framework edges, and dispose the returned handler resources when the host shuts down.
+Keep endpoint schemas and middleware contracts separate from handler implementations so the server, generated clients, OpenAPI, and tests share one contract. Build handlers as Layers with `HttpApiBuilder`. Handlers accept decoded input, call application services, and return declared success or error values.
 
-## In-Memory Typed Tests
+Put authentication and cross-cutting transport policy in `HttpApiMiddleware`. Keep authorization that depends on domain state in application services, where non-HTTP callers receive the same checks.
 
-Prefer `HttpApiTest` when testing an existing HttpApi implementation. `HttpApiTest.groups(Api, [...])` builds an in-memory typed client that exercises request encoding, routing, middleware, handlers, error mapping, and response decoding without opening a socket.
+Compose routes and the platform server at the application root. At serverless or external-framework edges, `HttpRouter.toWebHandler` bridges to the host. Dispose its returned resources when the host shuts down.
 
-- Provide the real handler Layers with test service implementations and `HttpServer.layerServices`.
-- Provide client-side middleware, such as test authorization, separately from server middleware.
-- Assert through the generated typed client rather than invoking handler functions directly.
-- Keep a smaller number of live-server tests only for platform wiring that the in-memory pipeline does not cover.
+## Test the contract and transport separately
+
+Prefer `HttpApiTest` for contract-level tests. Its in-memory typed client exercises encoding, routing, middleware, handlers, and response decoding without opening a socket. Provide real handler Layers with test application services and `HttpServer.layerServices`; provide client-side middleware separately.
+
+Create the client in a test-owned scope, and assert through it instead of calling handlers directly. A streaming response keeps request resources alive until its body finishes or the owning scope closes.
+
+Only call groups selected by `HttpApiTest.groups`. The client type still includes other groups, but calling them defects. Keep live-server tests for client aborts, socket behavior, and platform wiring; the in-memory client does not emulate those behaviors.
+
+## Source hints
+
+Read `packages/effect/src/http-api/HttpApiTest.ts` for test scope and group behavior, and `packages/effect/src/http/HttpRouter.ts` for web-handler lifecycle in the matching Effect checkout.

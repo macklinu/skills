@@ -1,27 +1,25 @@
-# Async Interop And Cancellation
+# Async interop and cancellation
 
-Use this when adapting synchronous exceptions, Promise APIs, callbacks, event listeners, or cancellation signals.
+Adapt foreign APIs at their boundary, then keep service implementations Effect-native with `Effect.gen` or `Effect.fn`. An `async` handler is appropriate when a non-Effect host awaits a managed-runtime call, not as the implementation of an Effect service.
 
-## Constructor Choice
+## Keep work lazy and failures typed
 
-- Use `Effect.sync` for lazy synchronous work that does not throw and `Effect.try` when synchronous exceptions must become typed failures.
-- Use `Effect.promise` only for Promise work that cannot reject. Use `Effect.tryPromise` for rejecting or throwing Promise APIs and map the caught value to a specific tagged boundary error.
-- Start Promise work inside the constructor thunk. Passing an already-started Promise breaks Effect laziness, retries, repetition, timing, and cancellation.
-- Pass the `AbortSignal` supplied to `Effect.tryPromise` into the underlying API when supported. For a longer scoped integration that needs a signal, acquire `Effect.abortSignal` in the owning scope instead of constructing `AbortController` inside Effect code.
-- Use `Effect.callback` for one-shot callback APIs. Resume at most once, and return a cleanup Effect that unregisters the listener or cancels the source when interrupted.
-- Adapt multi-shot event sources with a scoped `Queue`, `PubSub`, or `Stream`; repeated `resume` calls do not turn `Effect.callback` into an event stream.
+Use `Effect.sync` for non-throwing synchronous work and `Effect.try` for synchronous exceptions. Use `Effect.tryPromise` for Promise APIs that can reject or throw; reserve `Effect.promise` for work that cannot reject. Map foreign failures to a specific tagged boundary error.
 
-```ts
-const read = Effect.tryPromise({
-  try: (signal) => client.read({ signal }),
-  catch: (cause) => new ClientError({ operation: "Client.read", cause }),
-})
-```
+Start the operation inside the constructor thunk. An already-started Promise bypasses Effect's control over retries, repetition, timing, and cancellation. Do not put a Promise in the success channel through `Effect.succeed`, `Effect.sync`, or `Effect.map` when you mean to await its result.
 
-## Effect-Native Boundary
+Return the error from a `try` or `tryPromise` catch mapper. Throwing from the mapper creates a defect rather than a typed failure.
 
-- Keep service implementations in `Effect.gen` / `Effect.fn`; do not implement them as `async` functions and wrap the resulting Promise afterward.
-- Do not let a Promise enter an Effect success channel through `Effect.succeed`, `Effect.sync`, `Effect.map`, or an unflattened callback.
-- `async` / `await` is appropriate at a non-Effect framework edge that awaits a single `ManagedRuntime` call.
+## Give cancellation a real mechanism
 
-These practices align with the current `@effect/tsgo` recommended Oxlint diagnostics, notably `async-function`, `new-promise`, `lazy-promise-in-effect-sync`, `promise-in-effect-success`, `abort-controller-in-effect`, and typed-error checks for `Effect.try` / `Effect.tryPromise` catch callbacks.
+Pass the supplied `AbortSignal` to the foreign API when it supports one. Interruption stops waiting, but the operation itself stops only if it observes that signal or has an effective cleanup action. For a longer scoped integration, acquire `Effect.abortSignal` in its owning scope instead of managing an `AbortController` yourself.
+
+Use `Effect.callback` for a one-shot callback API. Resume at most once and return a cleanup Effect to cancel or unregister the source on interruption. That cleanup does not run on ordinary success; use scope-owned acquisition/release when successful completion also needs cleanup.
+
+Use a scoped `Queue`, `PubSub`, or `Stream` for multi-shot sources. Repeated callback resumes do not create an event stream.
+
+### Signal parameter hazard
+
+Declare `signal` as an ordinary thunk parameter, or as the second callback-registration parameter after `resume`. Signal allocation depends on declared function arity, so rest parameters, defaulted signal parameters, and rest-forwarding wrappers can receive `undefined` instead of a signal.
+
+For exact constructor and cancellation behavior, read `tryPromise`, `callback`, and `abortSignal` in `packages/effect/src/Effect.ts` in the Effect checkout. See [resource ownership](RESOURCES_RUNTIME.md) when the adapter also owns a lifecycle.

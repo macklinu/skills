@@ -1,118 +1,57 @@
 ---
 name: effect
 description: |
-  Opinionated guide for building production TypeScript applications with Effect v4. Use when implementing Effect workflows, services, layers, schemas, configuration, schedules, caches, streams, HTTP clients, or tests.
+  Opinionated guide for building TypeScript applications with Effect v4. Use for Effect workflows, services, layers, schemas, resources, concurrency, streams, HTTP, or tests.
 license: MIT
 ---
 
 # Effect
 
-Use current Effect v4 APIs and the production defaults in this skill. Established project conventions still take precedence unless the task is explicitly changing them.
+Use this skill for design choices and local preferences. Use the project's Effect source for exact APIs. Follow established project conventions unless the task changes them.
 
-## Source Rule
+## Work from project source
 
-Check these before guessing:
+1. Read repository instructions and nearby application code before choosing a pattern.
+2. Locate the Effect subtree or checkout through repository guidance and directory structure, often under `repos/` or `vendor/`. Compare its version and revision with the application's manifest and lockfile; a vendored checkout can differ from the dependency actually used.
+3. Read only relevant sections of its `LLMS.md` and linked `ai-docs` examples. Check the matching module under `packages/effect/src`, nearby runtime tests, and `typetest` cases for signatures, failures, lifecycle, and inference.
+4. If local source is missing or mismatched, use the installed package or the matching upstream release. Do not copy unreleased APIs or change dependencies to make an example fit.
+5. Type-check and exercise the changed path in the application. Source reading does not replace verification.
 
-- the nearest `AGENTS.md` and any project-local Effect practices doc
-- the project-pinned `effect` package source and version
-- current upstream Effect source when the installed package does not answer the question
+Keep the subtree unchanged unless the task requires a dependency update. Check exports and `@stability`; an import path without `unstable` does not guarantee API stability. Upstream examples explain the library, but do not override the preferences here.
 
-This local guidance was last reviewed against `effect@4.0.3` source ([upstream revision](https://github.com/Effect-TS/effect/tree/35ec46efd001242a72f4a6027f9b89e220ae5eae)). Before introducing an unstable or version-sensitive API, confirm its export path and signature in the project's pinned Effect version. The review version is a gardening baseline, not a substitute for the project source.
+## Design boundaries
 
-## Branch Chooser
+- Keep business rules in services or domain functions and transport handlers thin.
+- Make required services, authority, and resource ownership explicit. Run effects only at process or framework edges.
+- Recover only when the boundary can provide a meaningful response. Retry only when repeating the operation is safe, and leave exhausted failures visible.
+- Infer types from canonical schemas and constructors. Do not bypass validation or Effect typing with casts, non-null assertions, or `as any`.
 
-Read only the branch references that match the task.
+## Read the relevant reference
 
-- Data models, schemas, brands, variants, optional keys, or decoders: read `references/SCHEMA.md`.
-- Services, module surfaces, layers, runtime wiring, errors, `Effect.fn`, or test services: read `references/SERVICES_LAYERS.md`.
-- Resource acquisition/release, scopes, application entry points, runtime ownership, or framework bridges: read `references/RESOURCES_RUNTIME.md`.
-- Promise/callback APIs, JavaScript interop, `AbortSignal`, or cancellation: read `references/ASYNC_INTEROP.md`.
-- Current time, parsing/formatting dates, time zones, or temporal calculations: read `references/TIME.md`.
-- Parallel effects, fibers, supervision, semaphores, queues, or non-Stream back-pressure: read `references/CONCURRENCY.md`.
-- Logging, spans, structured annotations, metrics, tracing, or telemetry: read `references/OBSERVABILITY.md`.
-- Runtime config, env variables, `ConfigProvider`, or `layerConfig`: read `references/CONFIG.md`.
-- Retry, repeat, polling, backoff, jitter, rate-limit-aware policies, or pass loops: read `references/SCHEDULING.md`.
-- Memoization, per-key TTL caches, deduplicating concurrent lookups, or request batching: read `references/CACHING.md`.
-- Streams, event sources, async iterables, queues/pubsubs, pagination, backpressure, or stream consumers: read `references/STREAMS.md`.
-- Outgoing HTTP calls, Effect HttpClient, status handling, or HTTP rate limiting: read `references/HTTP_CLIENTS.md`.
-- Effect tests, time, sleeps, concurrency synchronization, or fakes: read `references/TESTING.md`.
+Before editing, read every reference that applies, not every reference in the skill. New data or error types require the Schema reference; service definitions require Services and layers. Each reference owns its topic's defaults and consequential warnings.
 
-Load these opt-in package branches only after confirming the project uses the named package or module:
+| Task | Reference |
+| --- | --- |
+| Models, variants, validation, errors | [Schema](references/SCHEMA.md) |
+| Module style, services, layers, operation names | [Services and layers](references/SERVICES_LAYERS.md) |
+| Resources, entry points, framework bridges | [Resources and runtime](references/RESOURCES_RUNTIME.md) |
+| Promises, callbacks, cancellation | [Async interop](references/ASYNC_INTEROP.md) |
+| Time and zones | [Time](references/TIME.md) |
+| Parallel work, fibers, queues | [Concurrency](references/CONCURRENCY.md) |
+| Logs, spans, metrics | [Observability](references/OBSERVABILITY.md) |
+| Runtime settings | [Config](references/CONFIG.md) |
+| Retry, polling, pacing | [Scheduling](references/SCHEDULING.md) |
+| Memoization, caches, batching | [Caching](references/CACHING.md) |
+| Event sources and consumers | [Streams](references/STREAMS.md) |
+| Outgoing HTTP | [HTTP clients](references/HTTP_CLIENTS.md) |
+| Effect tests and fakes | [Testing](references/TESTING.md) |
 
-- `effect/http-api` / `HttpApi`: read `references/HTTP_API.md`.
-- `effect/sql` or an `@effect/sql-*` driver: read `references/SQL.md`.
-- `effect/reactivity` or an `@effect/atom-*` binding: read `references/ATOM.md`.
-- `effect/cli`: read `references/CLI.md`.
-- `effect/persistence`: read `references/PERSISTENCE.md`.
+Read these only when the project uses the corresponding module or package:
 
-If a task spans several branches, read all matching files before editing.
-
-## Core Defaults
-
-- Compose workflows with `Effect.gen(function* () { ... })`.
-- Define public service methods and non-trivial internal service methods with `Effect.fn("Domain.operation")`.
-- Use `Effect.fnUntraced` only for internal helpers where stack-frame/span metadata is intentionally unnecessary.
-- Prefer `Context.Service` for application services when the codebase has not standardized on another current service-tag style.
-- Build real service implementations with `Layer.effect(Service, Effect.gen(...))` and return `Service.of({ ... })`.
-- Acquire resources in their owning scope and run effects only at process or framework edges.
-- Adapt Promise and callback APIs with Effect constructors that preserve laziness, typed failures, and cancellation.
-- Use `Clock` for current time and `DateTime` for parsing, zones, arithmetic, and formatting in effectful application code.
-- Choose bounded concurrency explicitly and keep spawned fibers scoped, joined, interrupted, or deliberately supervised.
-- Give meaningful boundaries spans and safe structured annotations; configure loggers at the composition root and keep exporters opt-in.
-- Infer TypeScript types from their canonical schemas or constructors whenever the API exposes the type instead of restating the shape by hand.
-- Model records with `Schema.Struct(...)` plus a same-name `interface`.
-- Model typed Effect errors with `Schema.TaggedError`.
-- Read runtime config through `Config`, not direct `process.env` access in application logic.
-- Use `Schedule` for retry, repeat, polling, pacing, and backoff policies.
-- Use `Stream` for effectful sources that emit many values over time and need pull, backpressure, interruption, or transformation.
-- Prefer Effect HTTP client modules for outgoing HTTP in Effect applications when their typed errors, layers, and client transforms are useful.
-- Prefer Effect-aware tests, explicit layers, and deterministic synchronization over sleeps.
-- Prefer decoders and `schema.makeEffect(...)` at untrusted boundaries; reserve throwing `schema.make(...)` for trusted construction, and never use casts to skip validation.
-
-## Quick Selection Guide
-
-- Ordinary object record: `Schema.Struct(...)` plus same-name `interface`.
-- Scalar ID/value object: constrained branded schema.
-- Internal workflow decision or state: `Data.TaggedEnum<...>` plus `Data.taggedEnum<...>()` constructors and exhaustive `$match`.
-- Reusable boundary-crossing tagged variant: `Schema.TaggedStruct(...)` plus `type Foo = typeof Foo.Type`.
-- Boundary-crossing tagged union: `Schema.TaggedUnion(...)` plus `type Foo = typeof Foo.Type`, with `.cases`, `.guards`, and `.match`.
-- External/custom discriminator such as `type`: `Schema.Struct({ type: Schema.tag("variant"), ... })` plus `Schema.toTaggedUnion("type")` when union helpers are needed.
-- Expected typed failure: `Schema.TaggedError`.
-- Unknown boundary payload: `Schema.decodeUnknownEffect(...)`.
-- Service boundary: `Context.Service<Service, Interface>()(...)` plus `Layer.effect(...)` plus `Service.of(...)`.
-- Public or non-trivial internal service method: `Effect.fn("Domain.operation")`.
-- Runtime configuration: `Config` recipes read in layers; override with `ConfigProvider` in tests.
-- Event source: `Stream` consumed with `Stream.runForEach(...)` and forked with `Effect.forkScoped` in the owning layer.
-- Queue-backed event source: `Queue` for the producer boundary, `Stream.fromQueue(...)` for consumers.
-- Broadcast event source: `PubSub` / `Stream.fromPubSub(...)` or `SubscriptionRef` for latest-value state.
-- Polling worker: `runPass().pipe(Effect.repeat(Schedule.spaced(...)))`, with typed pass failures handled before repeat.
-- Retry transient operation: `Effect.retry(...)` / `Effect.retryOrElse(...)` with a bounded `Schedule`.
-- Keyed lookup cache with TTL and concurrent-lookup dedupe: prefer `Cache.make(...)` / exit-aware `Cache.makeWith(...)` when their lifecycle and eviction model fit.
-- Memoize a single effect result: `Effect.cached(...)` / `Effect.cachedWithTTL(...)`.
-- Batch N keys into one backend call (only when a real batch endpoint exists): `Effect.request(...)` + `RequestResolver`.
-- HTTP request in an Effect application: prefer Effect `HttpClient` plus request/response schema decoding.
-- HTTP transient retry: `HttpClient.retryTransient(...)`.
-- Time-sensitive test: `TestClock`, not real sleeping.
-- Concurrent/background test synchronization: `Deferred`, `Queue`, `Latch`, `Ref`, or explicit test hooks.
-
-## Boundary Rules
-
-- Keep HTTP handlers thin: decode input, read context, call services, map typed errors to transport responses.
-- Keep business rules in services or domain functions, not transport handlers.
-- Wrap HTTP clients, SDKs, CLIs, and external integrations in named effects at adapter boundaries.
-- Decode persisted rows with Schema or SQL-specific helpers when values are not trivially trusted.
-- Keep provider/network calls outside authoritative database transactions.
-- Catch or retry only when the current boundary has a truthful response.
-- Retry only when the operation has proven idempotency.
-- Let exhausted failures remain visible unless the boundary has a real fallback.
-
-## Do Nots
-
-- Do not use `as any`, non-null assertions, or unchecked casts to silence Effect typing problems.
-- Do not introduce `Schema.Class` or `Schema.TaggedClass` as default app data-modeling patterns.
-- Do not hand-roll `_tag` error classes when `Schema.TaggedError` fits.
-- Do not use cause-level recovery when typed-error recovery is enough.
-- Do not use `Layer.mergeAll(...)` or `provideMerge(...)` as blind make-it-compile tools.
-- Do not hide required application authority, credentials, persistence, transports, or external services behind `Context.Reference` defaults.
-- Do not add arbitrary `Effect.sleep(...)` to tests when a deterministic synchronization primitive is available.
-- Do not hand-roll Map/TTL/prune caches or in-flight dedupe when `effect/Cache` fits.
+| Integration | Reference |
+| --- | --- |
+| `effect/http-api` | [HttpApi](references/HTTP_API.md) |
+| `effect/sql`, `@effect/sql-*` | [SQL](references/SQL.md) |
+| `effect/reactivity`, `@effect/atom-*` | [Atoms](references/ATOM.md) |
+| `effect/cli` | [CLI](references/CLI.md) |
+| `effect/persistence` | [Persistence](references/PERSISTENCE.md) |

@@ -1,13 +1,17 @@
 # Observability
 
-Use this when adding logging, spans, structured context, metrics, tracing, or telemetry integrations.
+Give externally meaningful workflows and adapter boundaries stable operation names with `Effect.fn` or `Effect.withSpan`. Do not span every helper; instrument boundaries that explain work or failures.
 
-## Defaults
+## Choose safe context
 
-- Give externally meaningful workflows and adapter boundaries stable operation names with `Effect.fn` or `Effect.withSpan`. Do not span every trivial helper.
-- Attach stable, low-cardinality context with `Effect.annotateLogs` and `Effect.annotateSpans`: operation, request/correlation id, provider, route template, or entity id when appropriate.
-- Never annotate secrets, credentials, authorization headers, raw request/response bodies, or sensitive user data. Redact or summarize boundary evidence before logging it.
-- Configure `Logger.layer(...)` and `References.MinimumLogLevel` at the composition root so application code emits structured events without choosing sinks.
-- Keep metric names and labels intentional; do not put unbounded ids or payload values in metric labels.
+Use `Effect.annotateLogs` and `Effect.annotateSpans` for operation, provider, and route-template context. Request, correlation, and entity IDs can help logs and traces, but they are high-cardinality values and do not belong in metric labels. Keep metric names and labels bounded and intentional.
 
-Telemetry exporters are opt-in deployment integrations. Add OTLP, Prometheus, or vendor exporters only when the application has chosen that backend and validate unstable exporter APIs against its pinned Effect version.
+Never record secrets, credentials, authorization headers, raw request or response bodies, or sensitive user data. Redact or summarize boundary evidence before logging or annotating it.
+
+## Configure sinks at the root
+
+Choose `Logger.layer` and `References.MinimumLogLevel` at the composition root, not inside services. `Logger.layer` replaces the current logger set by default, including `Logger.tracerLogger`. Retain that logger when logs must remain span events, or use `{ mergeWithExisting: true }` when adding a sink rather than replacing sinks.
+
+Telemetry exporters are opt-in deployment choices. Add an exporter only for the backend the application uses, and check unstable exporter APIs against the project's pinned Effect version.
+
+For logger composition behavior, read `layer` and `tracerLogger` in `packages/effect/src/Logger.ts` in the Effect checkout. Consult the chosen exporter's source for its configuration rather than copying a generic telemetry setup.
