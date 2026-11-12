@@ -1,5 +1,5 @@
 ---
-name: macklinu-code-style
+name: code-style
 description: Apply my preferences for design, APIs, state, tests, and documentation. Use whenever implementing, refactoring, testing, documenting, reviewing code, or changing dependencies.
 ---
 

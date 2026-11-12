@@ -5,7 +5,7 @@ description: Create a pnpm 12 and Turborepo monorepo, or add Oxlint, Oxfmt, Left
 
 # Setup tooling
 
-Read repository instructions and `macklinu-code-style` first. Inspect manifests, pins, lockfiles, configs, ignores, local skills, and Git hooks before changing them.
+Read repository instructions and `code-style` first. Inspect manifests, pins, lockfiles, configs, ignores, local skills, and Git hooks before changing them.
 
 ## Fresh project: pnpm 12 + Turborepo
 
@@ -78,7 +78,7 @@ Follow the [Skills CLI guide](https://github.com/vercel-labs/skills#readme). Bef
 
 ```sh
 pnpx skills@latest add github/awesome-copilot --skill conventional-commit --yes
-pnpx skills@latest add macklinu/skills --skill macklinu-code-style pr-description --yes
+pnpx skills@latest add macklinu/skills --skill code-style pr-description --yes
 pnpx skills@latest add mattpocock/skills --skill '*' --yes
 ```
 
