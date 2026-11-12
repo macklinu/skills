@@ -28,7 +28,7 @@ Read the [review lookup guide](https://docs.github.com/en/rest/pulls/reviews#get
 
 Use the [review guide](https://docs.github.com/en/rest/pulls/reviews) for every selected review comment. Read the [inline-comment guide](https://docs.github.com/en/rest/pulls/comments), [issue-comment guide](https://docs.github.com/en/rest/issues/comments), and [CLI API guide](https://cli.github.com/manual/gh_api) for thread context, prior responses, and pagination. Finish loading every required page before editing/replying. PR-wide lists provide context, not extra review scope. With `--slurp`, process collected pages separately from `--jq`.
 
-Track every request, including several in one review body/comment, by source and evidence. Check current behavior and cited diffs even for outdated comments; a prior reply alone does not prove a fix. Load `macklinu-code-style` for implementation, research, and testing; for production TypeScript changes, load matching `effect` references. Finish reachable work and state precise disagreements/blockers.
+Track every request, including several in one review body/comment, by source and evidence. Check current behavior and cited diffs even for outdated comments; a prior reply alone does not prove a fix. Load `code-style` for implementation, research, and testing; for production TypeScript changes, load matching `effect` references. Finish reachable work and state precise disagreements/blockers.
 
 **Gate:** every selected request, including actionable review-body text, has evidence and an intended outcome (fixed, answered, blocked, or already addressed); every changed path is exercised.
 

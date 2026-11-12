@@ -13,7 +13,7 @@ Read repository instructions and load `macklinu-machine` for identity selection.
 
 ## 1. Publish the intended work
 
-Confirm the worktree, repository, head, base, and every commit/change to publish. Use the requested or established base; otherwise use the current repository default. Preserve unrelated work and existing user commits. For changes or verification, load `macklinu-code-style`; for production TypeScript changes, also load the relevant `effect` references. Prepare only missing intended commits and publish normally.
+Confirm the worktree, repository, head, base, and every commit/change to publish. Use the requested or established base; otherwise use the current repository default. Preserve unrelated work and existing user commits. For changes or verification, load `code-style`; for production TypeScript changes, also load the relevant `effect` references. Prepare only missing intended commits and publish normally.
 
 **Gate:** the complete intended scope is accounted for, bot identities are verified for new commits, and the remote head equals local HEAD. Uncertain targeting/publication stops PR writes.
 

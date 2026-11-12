@@ -13,7 +13,7 @@ Use only for an explicit coordinator-bootstrap request in the project folder. Su
 
 1. Read the project folder's generated `AGENTS.md`. Use its command prefix to load the native `skill` and current `context <slug>`.
 2. Read `PROJECT.md`, including its instructions, and the `MEMORY.md` index. Open the relevant linked memory files explicitly.
-3. Load `clear-voice` for output. Follow [macklinu-code-style](../macklinu-code-style/SKILL.md) when defining implementation and verification requirements.
+3. Load `clear-voice` for output. Follow [code-style](../code-style/SKILL.md) when defining implementation and verification requirements.
 4. Report the loaded constraints and any missing guidance, ask for the first authorized task, and stop. Do not start workers or publish during bootstrap.
 
 Apply the preferences below to later authorized work in this coordinator session.
