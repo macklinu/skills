@@ -9,28 +9,53 @@ compatibility: Requires macklinu-machine and a writable same-repository PR head.
 
 Invocation: `/machine-pr-create [PR context]`; context may specify purpose, base, or draft intent.
 
-Read repository instructions and load `macklinu-machine` for identity selection. Use its runner for commits and PR creation, and normal authentication for other `gh` commands and Git pushes.
+Read repository instructions and follow the current `macklinu-machine` skill for identity, authentication, runner, credential, and failure rules.
+
+This workflow requires a writable same-repository PR head. It covers publication and review requests only. Do not merge.
+
+Before retrying any uncertain write, inspect remote state. For uncertain PR creation, repeat the full paginated lookup below.
 
 ## 1. Publish the intended work
 
-Confirm the worktree, repository, head, base, and every commit/change to publish. Use the requested or established base; otherwise use the current repository default. Preserve unrelated work and existing user commits. For changes or verification, load `code-style`; for production TypeScript changes, also load the relevant `effect` references. Prepare only missing intended commits and publish normally.
+1. Confirm the worktree, repository, head, base, and intended commits and changes. Use the requested or established base; otherwise use the current repository default.
+2. For changes or verification, load `code-style`. For production TypeScript changes, also load the relevant `effect` references.
+3. Preserve unrelated work and existing user commits. Prepare only missing intended commits and verify their bot author and committer identities.
+4. Push the intended head and verify that its remote ref equals local `HEAD`.
 
-**Gate:** the complete intended scope is accounted for, bot identities are verified for new commits, and the remote head equals local HEAD. Uncertain targeting/publication stops PR writes.
+**Gate:** Verify the complete intended scope, new-commit bot attribution, and remote-head equality. Uncertain targeting or publication blocks PR writes.
 
 ## 2. Select or create the PR
 
-Read the [PR listing guide](https://docs.github.com/en/rest/pulls/pulls#list-pull-requests) and [CLI API guide](https://cli.github.com/manual/gh_api) to find all open matches by both repository names and head/base refs. Reuse the unique exact match. Ambiguous matches require a decision; uncertain creation requires a fresh lookup before another create.
+Read the [PR listing guide](https://docs.github.com/en/rest/pulls/pulls#list-pull-requests) and [CLI API guide](https://cli.github.com/manual/gh_api).
 
-Use `--paginate --jq` for per-page matching and inspect every page. With `--paginate --slurp`, process collected JSON separately; do not combine `--slurp` with `--jq` or `--template`.
+1. List open PRs in the base repository. Match the intended values for all four fields, not branch labels alone.
+   - `head.repo.full_name` and `head.ref`.
+   - `base.repo.full_name` and `base.ref`.
+2. Inspect every page before counting matches.
+   - With `--paginate --jq`, collect per-page matches.
+   - With `--paginate --slurp`, process collected JSON separately. Do not combine `--slurp` with `--jq` or `--template`.
+3. If exactly one PR matches, reuse it. If multiple PRs match, stop for a decision; do not choose one or create another.
+4. Before creation or title/body edits, load `pr-description`.
+5. If no PR matches, read the [CLI creation guide](https://cli.github.com/manual/gh_pr_create), then create with the requested draft state and explicit `--head` and `--base`. Explicit `--head` prevents implicit push or fork behavior.
+6. Preserve a reused PR's draft state and actual authorship. Do not create a duplicate to obtain bot authorship.
 
-When creating a PR or changing its title/body, load `pr-description`. For a new PR, read the [CLI creation guide](https://cli.github.com/manual/gh_pr_create) and supply explicit head/base; `--head` prevents implicit CLI push/fork behavior. Preserve the requested/existing draft state. Check the resulting PR's full commit/diff scope, published body, and author; report reused human authorship accurately instead of creating a duplicate.
-
-**Gate:** exactly one open PR matches the repository, head/base, published SHA, and intended scope; its body is accurate and author is verified. Claim machine authorship only for a bot-authored PR.
+**Gate:** Verify exactly one open exact match, the published SHA, full intended commit/diff scope, accurate body, and actual author. Claim machine authorship only for a bot-authored PR.
 
 ## 3. Request review
 
-Read the [review-request guide](https://docs.github.com/en/rest/pulls/review-requests). For the selected PR, check current state/head/author and pending reviewers. Pending `macklinu` means verify and skip—never remove/re-add. Otherwise request the user `macklinu`, not an assignee or mention. A completed review is not pending.
+1. Read the [review-request guide](https://docs.github.com/en/rest/pulls/review-requests) and recheck the PR's state, head, author, and pending reviewers.
+2. If the PR is no longer open or its head differs from the verified publication, stop review writes and re-establish the PR gate.
 
-If the author is `macklinu`, report the self-review restriction. Preserve PR stage and report state/permission/API refusals separately from publication. Inspect current state before retrying uncertain writes; keep this workflow limited to publication and review requesting, not merge.
+- If `macklinu` authored the PR, report the self-review restriction.
+- Otherwise, if `macklinu` is already pending, verify and skip the write. Never remove and re-add a pending reviewer.
+- Otherwise, request the user `macklinu` and verify that the request is pending.
 
-**Gate:** `macklinu` is verified pending, or the exact reviewer blocker is recorded. Handoff: PR URL, published SHA, and reviewer outcome.
+A completed review is not pending. An assignee or mention is not a review request.
+
+Preserve the PR's draft or ready stage, even if it causes a refusal. Report state, permission, or API refusals separately from publication.
+
+**Gate:** Verify that `macklinu` is pending, or record the exact reviewer blocker.
+
+## Handoff
+
+Report the PR URL, published SHA, actual author, and separate publication and reviewer outcomes.
