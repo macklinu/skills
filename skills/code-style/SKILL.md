@@ -5,11 +5,13 @@ description: Apply my preferences for design, APIs, state, tests, and documentat
 
 # Code style
 
-Use these defaults even when tooling does not enforce them.
+Use these as judgment-based defaults, not reasons to add lint rules for line length, function size or complexity, or magic numbers. Follow explicit task-specific exceptions.
 
 ## Design
 
 - Satisfy the current requirement with the simplest design. Do not add speculative configuration, extension points, or fallbacks.
+- Prefer small, focused functions that can be composed and tested independently. Compose them into larger functions that coordinate behavior; do not split cohesive logic merely to meet a size target.
+- Prefer self-documenting names and structure. Use named constants for meaningful numeric values, especially domain limits, units, and repeated values. Keep literals when their meaning is obvious and a name adds no clarity.
 - Prefer a little duplication to coupling unrelated behavior. Extract code for a shared rule, domain boundary, or clear resource ownership, not merely similar syntax.
 - Split modules for responsibilities that change independently, not to impose layers on small entry points.
 - Remove obsolete code, comments, tests, and transitional paths when replacing an implementation. Keep unrelated refactors separate.
@@ -37,6 +39,7 @@ Use these defaults even when tooling does not enforce them.
 
 ## Documentation
 
-- Keep chat transcripts, issue discussions, and session notes out of code, comments, and documentation. Implement decisions in code first. Document enduring technical rationale when useful, not the conversation or who requested or agreed to it.
-- Explain rationale, constraints, intended behavior, and operations that code cannot express. Distinguish intended behavior from the current implementation.
-- Keep quick starts task-focused. Put temporary migration and review notes in pull requests or working notes.
+- Prefer self-documenting code. Add brief comments or documentation only for non-obvious constraints, rationale, behavior, or operations. Distinguish intended behavior from the current implementation.
+- Keep conversation history out of repository changes, including paraphrased requests, agent plans, progress reports, and session summaries. This applies to READMEs, comments, docstrings, and other tracked files.
+- Write for a maintainer who has never seen the conversation. Record enduring technical facts, not who requested or agreed to them.
+- Keep quick starts task-focused. Put temporary implementation, migration, and review notes in the conversation or pull request, not repository files, unless explicitly requested as a repository artifact.
