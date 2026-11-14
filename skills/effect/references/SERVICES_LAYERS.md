@@ -1,6 +1,8 @@
 # Services, layers, and modules
 
-Use services for application capabilities with dependencies or replaceable implementations. Prefer `Context.Service` and function-valued methods.
+Use services for application capabilities with dependencies, shared state, resource ownership, or replaceable implementations. Prefer `Context.Service` and function-valued methods.
+
+Keep dependency-free, stateless helpers as plain functions unless replacement is needed. Do not wrap pure domain functions in services solely to observe their calls in tests.
 
 Export the effectful implementation as `layer`, built with `Layer.effect` and returning `Service.of`.
 
@@ -36,10 +38,16 @@ This self-export creates a namespace self-reference. If the toolchain does not s
 
 ## Operations
 
-Use `Effect.gen` for inline workflows and `Effect.fn("Domain.operation")` for public or non-trivial service methods. Use `fnUntraced` for internal helpers that intentionally need no tracing metadata.
+Prefer direct combinators for focused transformations and recovery. Use `Effect.gen` for dependent workflows and branching; avoid generators that only yield and return one effect without adding workflow logic.
+
+Use `Effect.fn("Domain.operation")` for public or non-trivial service methods. Use `fnUntraced` for internal helpers that intentionally need no tracing metadata.
+
+Extract meaningful domain decisions, recovery policies, and coherent steps when they clarify the parent workflow. Do not impose function-length limits.
+
+Prefer exhaustive variant matchers for closed unions and `Match` utilities when they clarify multi-condition branches. Keep simple predicates as `if` statements or guard clauses.
 
 Keep generator bodies focused on the workflow. Additional `Effect.fn` transforms can apply shared error mapping, annotations, or cleanup to the whole call and receive its original arguments. Reuse error helpers when repetition warrants them; name them after the error they produce and preserve useful operation labels.
 
 For workers and listeners started by layers, follow [resource ownership](RESOURCES_RUNTIME.md) and [fiber supervision](CONCURRENCY.md). Layer acquisition must finish rather than run a forever loop inline.
 
-For exact composition and transform behavior, inspect `Layer.ts`, `Effect.ts`, and `migration/layer-memoization.md` in the matching Effect checkout.
+For exact composition and transform behavior, inspect `Layer.ts`, `Effect.ts`, `Match.ts`, and `migration/layer-memoization.md` in the matching Effect checkout.

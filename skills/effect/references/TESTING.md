@@ -16,9 +16,13 @@ Keep test queues in the test's scope and register shutdown. Use `Ref` for observ
 
 For finite stream fixtures, use `Stream.fromIterable`; add `Stream.never` when the subscription must remain open. For interactive events, drive a test-owned queue. Bound collection with `Stream.take` when the source does not end.
 
-Assert behavior that can fail, including retry bounds, duplicate-write prevention, per-key ordering, interruption, and finalization where relevant. Do not assert only that a fake returns its configured value. Use property tests for invariants, with generators that shrink to useful failures, alongside explicit malformed boundary cases.
+Assert behavior that can fail, including retry bounds, duplicate-write prevention, per-key ordering, interruption, and finalization where relevant. Do not assert only that a mock or fake returns its configured value. Assert calls only when the interaction itself is part of the contract.
 
-## Give fakes a local control surface
+Use property tests for invariants, with generators that shrink to useful failures, alongside explicit malformed boundary cases.
+
+## Choose test implementations
+
+When tests need stronger control, supply controlled or mocked service methods through test layers instead of module-import mocks or stubs. Do not replace real pure domain functions merely to isolate a workflow. Use stateful fakes for workflows that need controlled transitions or recovery.
 
 For reusable or stateful service fakes, keep `TestInterface extends Interface`, `TestService`, and `testLayer` alongside the service's established module conventions. Production code depends only on `Service`; tests use `TestService` to drive failures, publish events, or inspect observations.
 

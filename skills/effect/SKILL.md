@@ -7,7 +7,9 @@ license: MIT
 
 # Effect
 
-Use this skill for design choices and local preferences. Use the project's Effect source for exact APIs. Follow established project conventions unless the task changes them.
+Use this skill for Effect-specific design choices and local preferences. Use [code-style](../code-style/SKILL.md) for general design and testing preferences.
+
+Use the project's Effect source for exact APIs. Follow established project conventions unless the task changes them.
 
 ## Work from project source
 
@@ -18,6 +20,8 @@ Use this skill for design choices and local preferences. Use the project's Effec
 5. Type-check and exercise the changed path in the application. Source reading does not replace verification.
 
 Keep the subtree unchanged unless the task requires a dependency update. Check exports and `@stability`; an import path without `unstable` does not guarantee API stability. Upstream examples explain the library, but do not override the preferences here.
+
+Check Effect modules before adding an npm dependency. Adapt external synchronous or asynchronous APIs only when needed; follow [Async interop](references/ASYNC_INTEROP.md) for lazy execution and typed boundary errors.
 
 ## Design boundaries
 

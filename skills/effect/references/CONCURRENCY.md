@@ -1,6 +1,8 @@
 # Concurrency and ownership
 
-Choose a finite `concurrency` for overlapping work. A traversal limit bounds that traversal, not all callers of a provider.
+Default to sequential execution. Opt into concurrency when independent work benefits from overlap; choose a finite `concurrency` and preserve required ordering and failure semantics.
+
+A traversal limit bounds that traversal, not all callers of a provider.
 
 Use a shared `Semaphore` in the owning service when independent callers must share capacity. Use its permit combinators so interruption and failure release permits.
 
