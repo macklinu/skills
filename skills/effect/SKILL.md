@@ -32,11 +32,12 @@ Check Effect modules before adding an npm dependency. Adapt external synchronous
 
 ## Read the relevant reference
 
-Before editing, read every reference that applies, not every reference in the skill. New data or error types require the Schema reference; service definitions require Services and layers. Each reference owns its topic's defaults and consequential warnings.
+Before editing, read every reference that applies, not every reference in the skill. New data or error types, tag checks, and pattern matching require the Schema reference; service definitions require Services and layers. Each reference owns its topic's defaults and consequential warnings.
 
 | Task | Reference |
 | --- | --- |
 | Models, variants, validation, errors | [Schema](references/SCHEMA.md) |
+| Tag checks, pattern matching | [Tag checks and matching](references/SCHEMA.md#tag-checks-and-matching) |
 | Module style, services, layers, operation names | [Services and layers](references/SERVICES_LAYERS.md) |
 | Resources, entry points, framework bridges | [Resources and runtime](references/RESOURCES_RUNTIME.md) |
 | Promises, callbacks, cancellation | [Async interop](references/ASYNC_INTEROP.md) |
