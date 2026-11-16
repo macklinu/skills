@@ -52,16 +52,49 @@ Preserve external discriminators and encoding contracts; do not impose internal 
 
 ## Tag checks and matching
 
-Prefer type-owned predicates and exhaustive matchers over manual `_tag` comparisons. Raw comparisons already narrow TypeScript unions. These APIs add reusable predicates, constrained tag names where supported, and exhaustiveness checking, not automatic payload validation.
+Choose predicates by the check you need. Keep built-in predicates and existing owner helpers when they suit the check; do not assume every owner helper constrains tag names.
 
-- For built-in types, use module predicates such as `Option.isSome`, `Result.isSuccess`, and `Exit.isFailure`, or their matching and transformation combinators.
-- For `Data.taggedEnum`, use `Variant.$is("Tag")(value)` for guards and `Variant.$is("Tag")` for filtering. Use `Variant.$match` for exhaustive dispatch.
-- For Schema tagged unions, use `.match` for exhaustive dispatch and `.isAnyOf(["Tag"])` for tag-only narrowing of trusted values.
-- For existing `_tag` unions without helpers, use `Match.valueTags(value, handlers)` or `Match.typeTags<Variant>()(handlers)` for exhaustive dispatch.
-- For grouped or nested patterns, compose `Match.tag` or `Match.when` cases and end with `Match.exhaustive`. Use `Match.tagsExhaustive` for an exhaustive tag-handler map.
-- As a fallback, `Predicate.isTagged` checks only `_tag` and accepts arbitrary tag strings. Prefer type-owned predicates that constrain tag names.
+- For built-in types, keep predicates such as `Option.isSome`, `Result.isSuccess`, and `Exit.isFailure`.
+- For `Data.taggedEnum`, keep `Variant.$is("Tag")(value)` for a single-tag check and `Variant.$is("Tag")` for a reusable predicate. Neither validates the payload.
+- For a single `_tag` on a trusted Schema tagged-union value, prefer `Predicate.isTagged(value, "loading")`. Use the same API for an existing union without a suitable owner predicate.
+- When you need a reusable single-tag predicate, such as for filtering, use `Predicate.isTagged("loading")`. Both forms check only `_tag`, without validating the payload.
+- For grouped tag checks, keep `.isAnyOf(["loading", "ready"])`. Do not use a single-element `.isAnyOf` for a single `_tag` check.
+- For dispatch across variants, keep exhaustive matchers such as Schema `.match`, `Data.taggedEnum`'s `$match`, or `Match.valueTags` and `Match.typeTags`. End composed `Match.tag` or `Match.when` cases with `Match.exhaustive`. Use `Match.tagsExhaustive` for an exhaustive tag-handler map.
 
-Schema's `.guards.Tag` validates the full type-side value, not only its tag. Use it when validation is needed, not to select a variant of an already-validated value. `Data.taggedEnum`'s `$is` and tag matchers do not validate payloads; decode unknown input at the boundary first.
+`Predicate.isTagged` checks `_tag` only. For a different discriminator, keep helpers that support it rather than converting the model.
+
+Schema's `.guards.Tag` validates the full type-side payload, not only the tag. Use it when validation is needed, not as a tag-only replacement for trusted internal values. Tag-only predicates and matchers do not validate payloads; decode unknown input at the boundary.
+
+In Effect 4.1.2, Schema `.isAnyOf` has an unconstrained `<const Keys>` parameter, and `Predicate.isTagged` accepts arbitrary strings. Neither guarantees compile-time tag-name checking.
+
+`Data.taggedEnum`'s `$is` is a separate API whose tag parameter is constrained to the enum's `_tag` union. Check the installed signatures before relying on these constraints in another version.
+
+```ts
+import { Predicate, Schema } from "effect"
+
+const ReadState = Schema.TaggedUnion({
+  idle: {},
+  loading: { startedAt: Schema.Number },
+  ready: { content: Schema.String },
+})
+type ReadState = typeof ReadState.Type
+
+const reads: ReadonlyArray<ReadState> = [
+  ReadState.cases.loading.make({ startedAt: 0 }),
+  ReadState.cases.ready.make({ content: "Loaded" }),
+]
+const firstIsLoading = Predicate.isTagged(reads[0], "loading")
+const loadingReads = reads.filter(Predicate.isTagged("loading"))
+const activeReads = reads.filter(ReadState.isAnyOf(["loading", "ready"]))
+const describe = ReadState.match({
+  idle: () => "Idle",
+  loading: ({ startedAt }) => `Loading since ${startedAt}`,
+  ready: ({ content }) => content,
+})
+const descriptions = reads.map(describe)
+```
+
+For an existing `Data.taggedEnum`, keep its `$is` and `$match` helpers:
 
 ```ts
 import { Data } from "effect"
@@ -84,7 +117,7 @@ const describe = Job.$match({
 const descriptions = jobs.map(describe)
 ```
 
-Do not introduce schemas or wrappers solely to avoid a comparison. Do not add catch-all branches to hide missing cases.
+Do not add wrappers or schemas, or convert models, merely to obtain a different predicate spelling. Do not add catch-all branches to hide missing cases.
 
 ## Typed errors
 
