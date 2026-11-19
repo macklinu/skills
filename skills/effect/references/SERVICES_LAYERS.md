@@ -36,6 +36,10 @@ This self-export creates a namespace self-reference. If the toolchain does not s
 - Hide implementation dependencies with `Layer.provide`. Use `provideMerge` when consumers also need the dependency, and `mergeAll` for independent exposed services.
 - Keep wiring flat enough to inspect. Do not add broad provisioning merely to silence missing-service errors, or hide required authority behind `Context.Reference` defaults.
 
+Inside Effect workflows and layer constructors, yield required services, for example `const repository = yield* UserRepo.Service`. Do not capture a context and use `Context.get` for ordinary service access; yielding keeps requirements in the effect's type and resolves services from the active environment.
+
+For test fixture ownership and composition, follow [Testing](TESTING.md#let-the-test-framework-own-fixtures).
+
 ## Operations
 
 Prefer direct combinators for focused transformations and recovery. Use `Effect.gen` for dependent workflows and branching; avoid generators that only yield and return one effect without adding workflow logic.
