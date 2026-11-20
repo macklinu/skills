@@ -1,7 +1,7 @@
 ---
 name: effect
 description: |
-  Build TypeScript applications with Effect v4 using local conventions for workflows, services, layers, schemas, resources, concurrency, streams, HTTP, and tests. Also use for tag checks, discriminator checks, and finite-value UI branching in Effect projects, even without direct Effect imports.
+  Project conventions for TypeScript applications built with Effect v4. Use when implementing, refactoring, reviewing, or testing code in these projects, including UI code without direct Effect imports.
 license: MIT
 ---
 
