@@ -1,7 +1,7 @@
 ---
 name: effect
 description: |
-  Opinionated guide for building TypeScript applications with Effect v4. Use for Effect workflows, services, layers, schemas, resources, concurrency, streams, HTTP, or tests.
+  Project conventions for TypeScript applications built with Effect v4. Use when implementing, refactoring, reviewing, or testing code in these projects, including UI code without direct Effect imports.
 license: MIT
 ---
 
@@ -32,12 +32,16 @@ Check Effect modules before adding an npm dependency. Adapt external synchronous
 
 ## Read the relevant reference
 
-Before editing, read every reference that applies, not every reference in the skill. New data or error types, tag checks, and pattern matching require the Schema reference; service definitions require Services and layers. Each reference owns its topic's defaults and consequential warnings.
+Before editing, read every reference that applies, not every reference in the skill. Each reference owns its topic's defaults and consequential warnings.
+
+New data or error types require the Schema reference; service definitions require Services and layers.
+
+Tag checks, `_tag` or other discriminator checks, and branching on string-literal unions require the [matching reference](references/SCHEMA.md#tag-checks-and-matching). This includes UI labels, validation messages, and rendering decisions, even without direct Effect imports.
 
 | Task | Reference |
 | --- | --- |
 | Models, variants, validation, errors | [Schema](references/SCHEMA.md) |
-| Tag checks, pattern matching | [Tag checks and matching](references/SCHEMA.md#tag-checks-and-matching) |
+| Tag or discriminator checks, literal-union and UI branching | [Tag checks and matching](references/SCHEMA.md#tag-checks-and-matching) |
 | Module style, services, layers, operation names | [Services and layers](references/SERVICES_LAYERS.md) |
 | Resources, entry points, framework bridges | [Resources and runtime](references/RESOURCES_RUNTIME.md) |
 | Promises, callbacks, cancellation | [Async interop](references/ASYNC_INTEROP.md) |

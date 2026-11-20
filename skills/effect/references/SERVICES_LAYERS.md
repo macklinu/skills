@@ -48,7 +48,7 @@ Use `Effect.fn("Domain.operation")` for public or non-trivial service methods. U
 
 Extract meaningful domain decisions, recovery policies, and coherent steps when they clarify the parent workflow. Do not impose function-length limits.
 
-Prefer exhaustive variant matchers for closed unions and `Match` utilities when they clarify multi-condition branches. Keep simple predicates as `if` statements or guard clauses.
+Follow [matching guidance](SCHEMA.md#tag-checks-and-matching) for closed unions and finite-value branches. Keep simple predicates as `if` statements or guard clauses.
 
 Keep generator bodies focused on the workflow. Additional `Effect.fn` transforms can apply shared error mapping, annotations, or cleanup to the whole call and receive its original arguments. Reuse error helpers when repetition warrants them; name them after the error they produce and preserve useful operation labels.
 

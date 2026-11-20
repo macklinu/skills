@@ -119,6 +119,28 @@ const descriptions = jobs.map(describe)
 
 Do not add wrappers or schemas, or convert models, merely to obtain a different predicate spelling. Do not add catch-all branches to hide missing cases.
 
+### Finite-value branching
+
+Prefer Effect's `Match` API for branching on a finite union of values, including when each branch returns a constant. Do not use an inline object literal indexed by a discriminator to select a branch result.
+
+Use `Match.value` for an immediate decision or `Match.type` for a reusable matcher. Cover every value with `Match.when` handlers and finish with `Match.exhaustive` so adding a union member requires a handler. Do not use a catch-all to hide missing cases.
+
+```ts
+import { Match } from "effect"
+
+type Selection = "Letter" | "Emoji" | "Icon"
+
+const selectionPrompt = (selection: Selection) =>
+  Match.value(selection).pipe(
+    Match.when("Letter", () => "Enter one letter."),
+    Match.when("Emoji", () => "Enter one emoji."),
+    Match.when("Icon", () => "Choose an icon."),
+    Match.exhaustive,
+  )
+```
+
+Keep genuine static lookup data, such as catalog metadata keyed by ID, as tables. Moving a branch-result object into a named constant does not make it lookup data.
+
 ## Typed errors
 
 Represent expected failures in the typed error channel, not by throwing. Default to `Schema.TaggedError` for typed errors; it is the class exception to these data-model defaults. Instantiate the error class instead of constructing a plain tagged object.
