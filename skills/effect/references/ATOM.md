@@ -8,16 +8,11 @@ Use writable atoms for local state and derived atoms for pure projections. Use `
 
 ## Branching on asynchronous results
 
-Prefer `AsyncResult.match` when branching across asynchronous result states, especially for React rendering. Supply `onInitial`, `onFailure`, and `onSuccess` instead of chaining `AsyncResult.isInitial` and `AsyncResult.isFailure` before reading `.value`. Each handler receives the full variant, not an unwrapped value or error.
-
-Keep focused predicates such as `AsyncResult.isFailure(result)` for a single yes/no question, and `AsyncResult.isWaiting(result)` for whether work is in flight.
-
-Bad: predicate chains dispatch across states and leave success implicit.
-
 ```tsx
 import { AsyncResult } from "effect/reactivity"
 
-function Profile({ result }: { result: AsyncResult.AsyncResult<string, Error> }) {
+// Bad: chain state predicates before reading .value.
+function BadProfile({ result }: { result: AsyncResult.AsyncResult<string, Error> }) {
   if (AsyncResult.isInitial(result)) {
     return <p aria-busy={result.waiting}>{result.waiting ? "Loading..." : "Not loaded."}</p>
   }
@@ -26,29 +21,16 @@ function Profile({ result }: { result: AsyncResult.AsyncResult<string, Error> })
   }
   return <p aria-busy={result.waiting}>{result.value}</p>
 }
-```
 
-Good: the matcher makes every state explicit.
-
-```tsx
-import { AsyncResult } from "effect/reactivity"
-
-function Profile({ result }: { result: AsyncResult.AsyncResult<string, Error> }) {
+// Good: prefer match for rendering; keep focused predicates for yes/no checks.
+function GoodProfile({ result }: { result: AsyncResult.AsyncResult<string, Error> }) {
   return AsyncResult.match(result, {
-    onInitial: ({ waiting }) => (
-      <p aria-busy={waiting}>{waiting ? "Loading..." : "Not loaded."}</p>
-    ),
-    onFailure: ({ waiting }) => (
-      <p role="alert" aria-busy={waiting}>Unable to load profile.</p>
-    ),
+    onInitial: ({ waiting }) => <p aria-busy={waiting}>{waiting ? "Loading..." : "Not loaded."}</p>,
+    onFailure: ({ waiting }) => <p role="alert" aria-busy={waiting}>Unable to load profile.</p>,
     onSuccess: ({ value, waiting }) => <p aria-busy={waiting}>{value}</p>,
   })
 }
 ```
-
-`waiting` is independent of the variant: `Initial` need not be loading, and `Success` or `Failure` can be waiting during refresh or retry. Keep the current success visible during refresh; use `waiting` for busy indicators or disabled actions rather than replacing it with initial loading UI.
-
-A failure's `cause` is a `Cause<E>`, not a bare `E`. Keep failures visible, use safe user-facing messages, and handle diagnostics at the existing error boundary rather than logging or emitting toasts during rendering. If displaying `previousSuccess` after a refresh failure, also show the failure rather than treating stale data as current success.
 
 ## Cancellation and serialized state
 
